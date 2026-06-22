@@ -22,9 +22,27 @@
 <body>
 <div id="loader"><div class="glove">🥊</div><div class="txt">BOXER PRO</div></div>
 <div id="root"></div>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
+<script>
+  // Yükleme kontrolü: 12 saniye içinde açılmazsa sebebini göster
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      var ld = document.getElementById("loader");
+      var root = document.getElementById("root");
+      if (ld && (!root || root.children.length === 0)) {
+        var ok = (typeof React !== "undefined") && (typeof ReactDOM !== "undefined") && (typeof Babel !== "undefined");
+        ld.innerHTML = '<div style="padding:30px;text-align:center;font-family:-apple-system,sans-serif;color:#fff;max-width:340px;">' +
+          '<div style="font-size:50px;margin-bottom:16px;">⚠️</div>' +
+          '<div style="font-size:16px;font-weight:800;margin-bottom:10px;">Uygulama yüklenemedi</div>' +
+          '<div style="font-size:13px;color:#aaa;line-height:1.5;">' +
+          (ok ? 'Kod çalışırken bir hata oluştu.' : 'İnternetten gerekli araçlar inemedi. İnternet bağlantını kontrol edip sayfayı yenile.') +
+          '</div></div>';
+      }
+    }, 12000);
+  });
+</script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo, useCallback, Component } = React;
 
