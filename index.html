@@ -3,46 +3,50 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0c" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="BOXER PRO" />
-<meta name="theme-color" content="#0a0a0c" />
-<title>BOXER PRO</title>
+<meta name="description" content="BOXER PRO — Profesyonel boks antrenman uygulaması. Otomatik program, gölge boksu, ağır torba, kondisyon ve daha fazlası." />
+<title>BOXER PRO — Fight Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
 <style>
-  html, body { margin: 0; padding: 0; background: #0a0a0c; -webkit-text-size-adjust: 100%; }
-  * { -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: #0a0a0c; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #fff;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+  }
   #root { min-height: 100vh; }
-  /* Yüklenirken gösterilecek ekran */
-  #loader { position: fixed; inset: 0; background: #0a0a0c; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: -apple-system, sans-serif; z-index: 9999; }
-  #loader .glove { font-size: 64px; animation: bob 1.2s ease-in-out infinite; }
-  #loader .txt { color: #FF3333; font-weight: 900; letter-spacing: 3px; margin-top: 16px; font-size: 14px; }
-  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  /* Yükleme ekranı (Babel derlerken görünür) */
+  #boot {
+    position: fixed; inset: 0; background: #0a0a0c; display: flex;
+    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    font-family: 'Inter', sans-serif; z-index: 9999;
+  }
+  #boot .glove { font-size: 56px; animation: bootPulse 1.1s ease-in-out infinite; }
+  #boot .ttl { color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 2px; }
+  #boot .sub { color: #FF3333; font-size: 11px; font-weight: 800; letter-spacing: 4px; }
+  @keyframes bootPulse { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.12); opacity: 1; } }
+  ::-webkit-scrollbar { width: 0; background: transparent; }
 </style>
 </head>
 <body>
-<div id="loader"><div class="glove">🥊</div><div class="txt">BOXER PRO</div></div>
+<div id="boot">
+  <div class="glove">&#129354;</div>
+  <div class="ttl">BOXER PRO</div>
+  <div class="sub">YUKLENIYOR...</div>
+</div>
 <div id="root"></div>
-<script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
-<script>
-  // Yükleme kontrolü: 12 saniye içinde açılmazsa sebebini göster
-  window.addEventListener("load", function () {
-    setTimeout(function () {
-      var ld = document.getElementById("loader");
-      var root = document.getElementById("root");
-      if (ld && (!root || root.children.length === 0)) {
-        var ok = (typeof React !== "undefined") && (typeof ReactDOM !== "undefined") && (typeof Babel !== "undefined");
-        ld.innerHTML = '<div style="padding:30px;text-align:center;font-family:-apple-system,sans-serif;color:#fff;max-width:340px;">' +
-          '<div style="font-size:50px;margin-bottom:16px;">⚠️</div>' +
-          '<div style="font-size:16px;font-weight:800;margin-bottom:10px;">Uygulama yüklenemedi</div>' +
-          '<div style="font-size:13px;color:#aaa;line-height:1.5;">' +
-          (ok ? 'Kod çalışırken bir hata oluştu.' : 'İnternetten gerekli araçlar inemedi. İnternet bağlantını kontrol edip sayfayı yenile.') +
-          '</div></div>';
-      }
-    }, 12000);
-  });
-</script>
+
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo, useCallback, Component } = React;
 
@@ -344,8 +348,8 @@ const T = {
     rounds3: "round",
     addBlock: "Ekle",
     addAgain: "Tekrar ekle",
-    roundLabel: "Round",
-    quickStart: "Hızlı Başlat",
+    roundLabel: "Round",    quickStart: "Hızlı Başlat",
+    roundMinLabel: "Süre", restLabel: "Dinlenme", perRoundShort: "dk/round", noRest: "Yok",
     selectRounds: "Kaç round çalışacaksın?",
     startNow: "ANTRENMANI BAŞLAT",
     addToPlan: "Plana ekle",
@@ -357,6 +361,7 @@ const T = {
     ghostTitle: "GHOST", ghostBest: "Önceki en iyi", ghostBeat: "Geçen seferi geçtin!",
     musicTitle: "Antrenman Müziği", musicHint: "Müzik çaları aç, sonra antrenmana dön",
     watchHow: "📺 Nasıl yapılır? (video ara)",
+    addExercise: "+ Hareket Ekle", addToProgram: "Programa Ekle", fixedSets: "Sabit set planı", noExForCatLevel: "Bu kategori ve seviyede uygun hareket yok.",
     autoTitle: "Otomatik Program",
     autoDesc: "Toplam süreyi seç, gerisini bize bırak. Maksimum gelişim için dengeli program kuralım.",
     totalDuration: "Toplam Süre (ısınma + soğuma dahil)",
@@ -407,6 +412,14 @@ const T = {
     timesWeek: "gün/hafta",
     statKcal: "Kalori",
     tabRun: "Koşu",
+    tabTrain: "Antrenman Zamanı",
+    trainPickTitle: "Bugün nasıl çalışmak istersin?",
+    trainBuildDesc: "Hareketleri kendin seç, kendi antrenmanını tasarla.",
+    trainAutoDesc: "Süreni seç, uygulama sana özel program kursun.",
+    trainRunDesc: "GPS ile mesafe, tempo ve kalori takibiyle koş.",
+    trainBack: "← Geri",
+    watchVideo: "📹 Nasıl yapılır?",
+    editProgram: "✏️ Düzenle", doneEditing: "✓ Bitti", removeMove: "Çıkar",
     runTitle: "Koşu Antrenmanı",
     runDesc: "Kronometreyi başlat, koşunu bitirince mesafeni gir. Mesafe ve kaloriyi kaydedelim.",
     runStart: "▶ Başlat", runPause: "⏸ Duraklat", runResume: "▶ Devam", runFinish: "✓ Bitir ve Kaydet",
@@ -464,11 +477,15 @@ const T = {
     premiumThanks: "Desteğin için teşekkürler! 🏆",
     premiumShort: "Premium",
     lockedFeature: "Premium Özellik",
-    freeLimitAuto: "Ücretsiz: günde 1 otomatik program. Sınırsız için Premium'a geç.",
+    freeLimitAuto: "Ücretsiz: günde 2 otomatik program. Sınırsız için Premium'a geç.",
     unlockWith: "🔓 Premium ile aç",
     premiumBadge: "PRO",
     chartsLocked: "İlerleme grafikleri Premium özelliğidir.",
     backupLocked: "Veri yedekleme Premium özelliğidir.",
+    focusTitle: "Neye Odaklanmak İstersin?",
+    focusHint: "Hiçbir şey seçmezsen dengeli program kurulur. Seçersen sadece onlardan oluşur.",
+    focusAll: "Dengeli (hepsi)",
+    intLow: "Az", intMid: "Orta", intHigh: "Yoğun",
     tourSkip: "Geç",
     tourNext: "Devam",
     tourStart: "Başla! 🥊",
@@ -541,6 +558,7 @@ const T = {
     addBlock: "Add",
     addAgain: "Add again",
     roundLabel: "Rounds",
+    roundMinLabel: "Length", restLabel: "Rest", perRoundShort: "min/round", noRest: "None",
     quickStart: "Quick Start",
     selectRounds: "How many rounds?",
     startNow: "START WORKOUT",
@@ -553,6 +571,7 @@ const T = {
     ghostTitle: "GHOST", ghostBest: "Previous best", ghostBeat: "You beat last time!",
     musicTitle: "Workout Music", musicHint: "Open your player, then return to training",
     watchHow: "📺 How to do it? (search video)",
+    addExercise: "+ Add Exercise", addToProgram: "Add to Program", fixedSets: "Fixed set plan", noExForCatLevel: "No exercises available for this category and level.",
     autoTitle: "Auto Program",
     autoDesc: "Pick total time, leave the rest to us. We'll build a balanced program for maximum progress.",
     totalDuration: "Total Time (incl. warm-up + cool-down)",
@@ -603,6 +622,14 @@ const T = {
     timesWeek: "days/week",
     statKcal: "Calories",
     tabRun: "Run",
+    tabTrain: "Train Now",
+    trainPickTitle: "How do you want to train today?",
+    trainBuildDesc: "Pick the moves yourself, design your own workout.",
+    trainAutoDesc: "Choose your time, let the app build a custom program.",
+    trainRunDesc: "Run with GPS distance, pace and calorie tracking.",
+    trainBack: "← Back",
+    watchVideo: "📹 How to?",
+    editProgram: "✏️ Edit", doneEditing: "✓ Done", removeMove: "Remove",
     runTitle: "Running Workout",
     runDesc: "Start the timer, enter your distance when done. We'll log distance and calories.",
     runStart: "▶ Start", runPause: "⏸ Pause", runResume: "▶ Resume", runFinish: "✓ Finish & Save",
@@ -660,11 +687,15 @@ const T = {
     premiumThanks: "Thanks for your support! 🏆",
     premiumShort: "Premium",
     lockedFeature: "Premium Feature",
-    freeLimitAuto: "Free: 1 auto program per day. Go Premium for unlimited.",
+    freeLimitAuto: "Free: 2 auto programs per day. Go Premium for unlimited.",
     unlockWith: "🔓 Unlock with Premium",
     premiumBadge: "PRO",
     chartsLocked: "Progress charts are a Premium feature.",
     backupLocked: "Data backup is a Premium feature.",
+    focusTitle: "What Do You Want to Focus On?",
+    focusHint: "Pick nothing for a balanced program. Pick some and it's built only from those.",
+    focusAll: "Balanced (all)",
+    intLow: "Light", intMid: "Medium", intHigh: "Heavy",
     tourSkip: "Skip",
     tourNext: "Next",
     tourStart: "Start! 🥊",
@@ -805,8 +836,10 @@ function estimateProgramCalories(program, weight) {
   const w = weight || userWeight();
   let totalSec = 0, weightedMet = 0;
   (program.phases || []).forEach(phase => {
-    const met = metForPhase(phase.name);
+    const phaseMet = metForPhase(phase.name);
     (phase.exercises || []).forEach(ex => {
+      // Hareketin kendi MET'i varsa onu kullan (tabloda her harekete atandı), yoksa faz ortalaması
+      const met = (typeof ex.met === "number" && ex.met > 0) ? ex.met : phaseMet;
       const sec = parseProgSeconds(ex.duration || ex.sets || "");
       totalSec += sec; weightedMet += met * sec;
     });
@@ -958,7 +991,7 @@ function loadPremium() {
 function setPremium(on) { try { window.localStorage.setItem(PREMIUM_KEY, on ? "1" : "0"); } catch {} }
 // Ücretsiz kullanıcı günde 1 otomatik program kurabilir. Premium sınırsız.
 const AUTOGEN_KEY = "boxerpro_autogen_v1";
-const FREE_DAILY_AUTO = 1;
+const FREE_DAILY_AUTO = 2;
 function autoGenToday() {
   if (typeof window === "undefined") return 0;
   try { const d = JSON.parse(window.localStorage.getItem(AUTOGEN_KEY) || "{}"); return d.date === todayStr() ? (d.count || 0) : 0; } catch { return 0; }
@@ -1047,226 +1080,210 @@ const LEVEL_TAG = {
 // ═══════════════════════════════════════════════════════════════════════════
 const MASTER_POOL = {
   shadow: [
-    // — Çaylak —
-    { level: "beginner", name: "Sol direk (jab) tekrarı", nameEn: "Jab repetition", sets: "4x2 dk", duration: "2 dk", desc: "Omuzdan düz fırlat, el çeneye döner. Mesafe ölçme silahı.", descEn: "Throw straight from the shoulder, return to chin. Your range finder.", equip: [] },
-    { level: "beginner", name: "1-2 temel (jab-cross)", nameEn: "Basic 1-2 (jab-cross)", sets: "4x2 dk", duration: "2 dk", desc: "Jab açar, cross gücü taşır. Arka topuğu çevir.", descEn: "Jab opens, cross carries power. Pivot the rear heel.", equip: [] },
-    { level: "beginner", name: "Duruş & guard pratiği", nameEn: "Stance & guard drill", sets: "3x2 dk", duration: "2 dk", desc: "Eller çene hizasında, dirsekler içeride, ağırlık dengeli.", descEn: "Hands at chin, elbows in, weight balanced.", equip: [] },
-    { level: "beginner", name: "Yavaş teknik gölge", nameEn: "Slow technical shadow", sets: "3x3 dk", duration: "3 dk", desc: "Her vuruşu yavaş, kusursuz formla. Kas hafızası.", descEn: "Every punch slow, perfect form. Muscle memory.", equip: [] },
-    { level: "beginner", name: "Sol kroşe (hook) temeli", nameEn: "Lead hook basics", sets: "4x2 dk", duration: "2 dk", desc: "Dirsek 90 derece, ön ayakta pivot, kalçadan dön.", descEn: "Elbow at 90°, pivot on lead foot, turn from the hip.", equip: [] },
-    { level: "beginner", name: "Aparkat (uppercut) temeli", nameEn: "Uppercut basics", sets: "4x2 dk", duration: "2 dk", desc: "Dizden hafif çök, alttan yukarı sür. Çeneyi koru.", descEn: "Slight knee bend, drive upward from below. Protect the chin.", equip: [] },
-    { level: "beginner", name: "Serbest hafif gölge", nameEn: "Free light shadow", sets: "3x3 dk", duration: "3 dk", desc: "Öğrenilen vuruşları kendi ritminde birleştir.", descEn: "Combine learned punches at your own rhythm.", equip: [] },
-    // — Yükseliş —
-    { level: "intermediate", name: "1-2-3-2 zincir", nameEn: "1-2-3-2 chain", sets: "5x3 dk", duration: "3 dk", desc: "Hook'u kısa-sıkı tut, son cross'ta tüm gücü ver.", descEn: "Keep the hook tight, explode on the final cross.", equip: [] },
-    { level: "intermediate", name: "Eskiv (slip) + kontra", nameEn: "Slip + counter", sets: "4x3 dk", duration: "3 dk", desc: "Hayali jab'i slip'le, anında 2-3 kontra.", descEn: "Slip an imaginary jab, counter 2-3 instantly.", equip: [] },
-    { level: "intermediate", name: "Açılı ayak işi + vuruş", nameEn: "Angled footwork + punch", sets: "4x2 dk", duration: "2 dk", desc: "Pivot sonrası farklı açıdan atak, guard dışına çık.", descEn: "Attack from a new angle after pivot, step outside the guard.", equip: [] },
-    { level: "intermediate", name: "Ritim değişimi (yavaş-patlama)", nameEn: "Rhythm shift (slow-burst)", sets: "5x3 dk", duration: "3 dk", desc: "İki yavaş, ardından ani 4'lü patlama.", descEn: "Two slow, then a sudden 4-punch burst.", equip: [] },
-    { level: "intermediate", name: "Çift jab + cross (1-1-2)", nameEn: "Double jab + cross (1-1-2)", sets: "4x3 dk", duration: "3 dk", desc: "İlk jab ölçer, ikinci girer, cross iner.", descEn: "First jab measures, second commits, cross lands.", equip: [] },
-    { level: "intermediate", name: "Feint + jab (sahte hamle)", nameEn: "Feint + jab", sets: "4x2 dk", duration: "2 dk", desc: "Sahte hareketle rakibi yanılt, gerçek jab'i sok.", descEn: "Fool the opponent with a fake, land the real jab.", equip: [] },
-    { level: "intermediate", name: "Dumbbell ile interval shadow", nameEn: "Dumbbell interval shadow", sets: "4x2 dk", duration: "2 dk", desc: "Hafif dambıllarla (1-2 kg) gölge — omuz dayanıklılığı.", descEn: "Shadow with light dumbbells — shoulder endurance.", equip: ["dumbbell"] },
-    // — Pro —
-    { level: "pro", name: "Lomachenko el-göz koordinasyonu", nameEn: "Lomachenko hand-eye coordination", sets: "6x3 dk", duration: "3 dk", desc: "Hayali hedefe hızlı dokunuşlar, ani açı değişimi. Reaksiyon.", descEn: "Rapid taps to a target, sudden angle changes. Reaction.", equip: [] },
-    { level: "pro", name: "6+ vuruşluk kombinasyon kırılması", nameEn: "6+ punch combination break", sets: "6x3 dk", duration: "3 dk", desc: "Tüm vuruş tipleri tek zincirde, maksimum hız.", descEn: "Every punch type in one chain, max speed.", equip: [] },
-    { level: "pro", name: "Mayweather omuz roll simülasyonu", nameEn: "Mayweather shoulder-roll sim", sets: "5x3 dk", duration: "3 dk", desc: "Omuzla sek, arka elle anında kontra. Philly shell.", descEn: "Deflect with shoulder, counter with rear hand. Philly shell.", equip: [] },
-    { level: "pro", name: "Son round tükenmişlik gölgesi", nameEn: "Final-round exhaustion shadow", sets: "3x3 dk", duration: "3 dk", desc: "Yorgunlukta hız ve form düşmesin. 12. round.", descEn: "Speed and form must hold under fatigue. Round 12.", equip: [] },
-    { level: "pro", name: "Dumbbell patlayıcı çıkış shadow", nameEn: "Dumbbell explosive shadow", sets: "5x2 dk", duration: "2 dk", desc: "Dambılla yavaş, bırakınca eller uçar. Hız çıkışı.", descEn: "Slow with dumbbells, hands fly when dropped. Speed pop.", equip: ["dumbbell"] },
-    { level: "pro", name: "Pernell Whitaker kaçış gölgesi", nameEn: "Pernell Whitaker evasive shadow", sets: "5x3 dk", duration: "3 dk", desc: "Sürekli baş ve gövde hareketi, vurulmadan vur. Defansif dahi.", descEn: "Constant head and torso movement, hit without being hit. Defensive genius.", equip: [] },
-    { level: "pro", name: "Hagler switch-hit (ortodoks↔güney)", nameEn: "Hagler switch-hitting", sets: "5x3 dk", duration: "3 dk", desc: "Round içinde duruş değiştir, her iki taraftan da güçlü vur.", descEn: "Switch stance mid-round, strike powerfully from both sides.", equip: [] },
-    { level: "pro", name: "3 dakika durmadan vuruş (volume)", nameEn: "3-min nonstop output", sets: "4x3 dk", duration: "3 dk", desc: "Hiç durmadan yüksek hacim. Pacquiao tarzı yumruk seli.", descEn: "Nonstop high volume. Pacquiao-style punch flurry.", equip: [] },
-    { level: "pro", name: "Feint + patlayıcı giriş", nameEn: "Feint + explosive entry", sets: "5x2 dk", duration: "2 dk", desc: "Sahte hamle ile aç, ardından ani 3'lü seri ile gir.", descEn: "Open with a feint, then burst in with a sudden 3-punch series.", equip: [] },
-    { level: "pro", name: "Çift yön blitz (sağ-sol patlama)", nameEn: "Two-direction blitz", sets: "5x2 dk", duration: "2 dk", desc: "Bir taraftan patla, açı değiştir, diğer taraftan ikinci dalga.", descEn: "Blitz from one side, change angle, second wave from the other.", equip: [] },
+    { level: "beginner", name: "Sol direk (jab) tekrarı", nameEn: "Jab repetition", sets: "3x3 dk", duration: "3 dk", desc: "Jab'i omuzdan düz fırlat, atışın hemen ardından el çeneye geri döner. Mesafeyi ölçen ve ritmi kuran en temel silahın.", descEn: "Throw the jab straight from the shoulder; the hand snaps back to the chin right after. Your most basic weapon for measuring range and setting rhythm.", equip: [], rest: 45, met: 5.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "1-2 temel (jab-cross)", nameEn: "Basic 1-2 (jab-cross)", sets: "3x2 dk", duration: "2 dk", desc: "Jab yolu açar, cross gücü taşır. Cross'ta arka topuğu içeri çevir ki güç kalçadan yumruğa aksın.", descEn: "Jab opens the path, cross brings the power. On the cross, turn the rear heel in so power flows from the hip into the punch.", equip: [], rest: 45, met: 5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "Duruş & guard pratiği", nameEn: "Stance & guard drill", sets: "1x2 dk", duration: "2 dk", desc: "Eller çene hizasında, dirsekler gövdeye yakın, ağırlık iki ayağa dengeli. Tüm tekniğin başladığı temel duruş.", descEn: "Hands at chin level, elbows close to the body, weight balanced on both feet. The base stance where all technique begins.", equip: [], rest: 20, met: 5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "Yavaş teknik gölge (jab-cross tekrarı)", nameEn: "Slow technical shadow (jab-cross)", sets: "3x3dk", duration: "3 dk", desc: "Jab ve 1-2'yi acele etmeden, kusursuz formda tekrarla. Amaç hız değil, doğru hareketi kas hafızasına yazmak.", descEn: "Repeat the jab and 1-2 unhurried, in flawless form. The goal isn't speed but writing the correct movement into muscle memory.", equip: [], rest: 55, met: 5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "Kroşe (hook) temeli", nameEn: "Hook basics", sets: "3x2 dk", duration: "2 dk", desc: "Dirsek 90 derece, ön ayakta pivot yap ve gücü kalçadan al. Yan taraftan gelen yıkıcı vuruş. Hiç durmadan doğru teknik kroşeler atılmalı", descEn: "Elbow at 90 degrees, pivot on the lead foot and draw power from the hip. A devastating shot coming from the side. Throw clean, technical hooks nonstop.", equip: [], rest: 45, met: 5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "beginner", name: "Aparkat (uppercut) temeli", nameEn: "Uppercut basics", sets: "3x2 dk", duration: "2 dk", desc: "Dizden hafifçe çök, yumruğu alttan yukarı sür. Çeneni koru, gücü bacaktan başlat.Hiç durmadan doğru teknik aparkat atılmalı.", descEn: "Dip slightly from the knees and drive the fist up from below. Protect your chin, start the power from the legs. Throw clean, technical uppercuts nonstop.", equip: [], rest: 45, met: 5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "beginner", name: "Serbest hafif gölge", nameEn: "Free light shadow", sets: "3x3 dk", duration: "3 dk", desc: "Öğrendiğin tüm vuruşları (jab, 1-2, kroşe, aparkat,kroşe) kendi ritminde, karışık uygula. Akışı hisset.", descEn: "Apply all your punches (jab, 1-2, hook, uppercut, hook) mixed up at your own rhythm. Feel the flow.", equip: [], rest: 55, met: 5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "1-2-3-2 zincir", nameEn: "1-2-3-2 chain", sets: "3x3 dk", duration: "3 dk", desc: "Kroşeyi kısa ve sıkı tut, seriyi son cross'ta tüm gücünü vererek bitir.", descEn: "Keep the hook short and tight, finish the series by putting all your power into the last cross.", equip: [], rest: 60, met: 6, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Eskiv (slip) + kontra", nameEn: "Slip + counter", sets: "3x3 dk", duration: "3 dk", desc: "Hayali jab'i başını yana kaydırarak savuştur, hemen ardından 2-3 ile kontra çık.", descEn: "Slip the imaginary jab by moving your head aside, then counter immediately with a 2-3.", equip: [], rest: 60, met: 6, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Açılı ayak işi(pivot) + vuruş", nameEn: "Angled footwork (pivot) + punch", sets: "3x3 dk", duration: "3 dk", desc: "Pivot yaptıktan sonra farklı bir açıdan saldır, rakibin guard'ının dışına çık.", descEn: "After pivoting, attack from a different angle and get outside the opponent's guard.", equip: [], rest: 45, met: 6, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Ritim değişimi (yavaş-patlama)", nameEn: "Rhythm shift (slow-burst)", sets: "3x3 dk", duration: "3 dk", desc: "İki yavaş vuruşun ardından ani, hızlı bir 4'lü patlama yap. Rakibi tempo değişimiyle şaşırt.", descEn: "After two slow punches, fire a sudden, fast 4-punch burst. Surprise the opponent with the tempo change.", equip: [], rest: 55, met: 7, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Çift jab + cross (1-1-2)", nameEn: "Double jab + cross (1-1-2)", sets: "3x3 dk", duration: "3 dk", desc: "İlk jab mesafeyi ölçer, ikinci jab içeri girer, cross gücü indirir.", descEn: "The first jab measures range, the second jab steps in, the cross brings the power down.", equip: [], rest: 60, met: 6, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Feint + jab (sahte hamle)", nameEn: "Feint + jab", sets: "3x3 dk", duration: "3 dk", desc: "Sahte bir hareketle rakibi yanılt, açık bulduğun anda gerçek jab'i sok.", descEn: "Fool the opponent with a fake move, then slip the real jab in the moment you find an opening.", equip: [], rest: 45, met: 6, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Dumbbell ile interval shadow", nameEn: "Dumbbell interval shadow", sets: "3x3 dk", duration: "3 dk", desc: "Hafif dambıllarla (0.5-1-2 kg) gölge boksu yap. Omuz dayanıklılığını ve vuruş gücünü artırır.", descEn: "Shadow box with light dumbbells (0.5-1-2 kg). Builds shoulder endurance and punching power.", equip: ["dumbbell"], rest: 45, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Lomachenko el-göz koordinasyonu", nameEn: "Lomachenko hand-eye coordination", sets: "3x3 dk", duration: "3 dk", desc: "Bir kombinasyon ya da tek vuruş at, hemen açı değiştir. Hayali rakibe sürekli hızlı vuruşlarla baskı kur.", descEn: "Throw a combo or single shot, then immediately change angle. Keep constant pressure on the imaginary opponent with fast punches.", equip: [], rest: 50, met: 6.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "5+ vuruşluk kombinasyon kırılması", nameEn: "5+ punch combination break", sets: "3x3 dk", duration: "3 dk", desc: "En az 5 yumrukluk seriler at; maksimum hızda, aralara güçlü tek vuruşlar serpiştir.", descEn: "Throw series of at least 5 punches at max speed, sprinkling strong single shots in between.", equip: [], rest: 50, met: 6.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Mayweather omuz roll kontrası", nameEn: "Mayweather shoulder-roll counter", sets: "3x3 dk", duration: "3 dk", desc: "Omuzla bloke et, ardından kontra çık; ya da omuz bloğunun arkasından roll yapıp kroşe ile cevap ver.", descEn: "Block with the shoulder, then counter; or roll behind the shoulder block and answer with a hook.", equip: [], rest: 50, met: 6.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Dumbbell patlayıcı çıkış shadow", nameEn: "Dumbbell explosive shadow", sets: "3x3 dk", duration: "3 dk", desc: "Dambılla sürekli kombinasyon,eller kalkmadıgında bırak ve dumbellsız kombinasyonlara devam.Bırakdığınız anda eller rahatlar ve uçar. Vuruş çıkış hızını geliştirir.", descEn: "Constant combos with the dumbbell; when the hands won't rise anymore, drop it and continue combos without weights. The moment you let go, the hands relax and fly. Develops punch release speed.", equip: ["dumbbell"], rest: 50, met: 9, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Kuba Stili gölge boksu", nameEn: "Cuban-style shadow boxing", sets: "3x3 dk", duration: "3 dk", desc: "Guard'ı düşük tut, beklenmedik açılardan gelen yumruklarla rakibi şaşırt.", descEn: "Keep the guard low and surprise the opponent with punches from unexpected angles.", equip: [], rest: 50, met: 6.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Hagler switch-hit (ortodoks↔güney)", nameEn: "Hagler switch-hitting", sets: "3x3 dk", duration: "3 dk", desc: "Round içinde duruş değiştir (ortodoks↔güney) ve her iki taraftan da güçlü vurabildiğini göster.", descEn: "Switch stance within the round (orthodox↔southpaw) and show you can hit hard from both sides.", equip: [], rest: 50, met: 6.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "3 dakika durmadan vuruş (volume)", nameEn: "3-min nonstop output", sets: "3x3 dk", duration: "3 dk", desc: "Rakibe nefes aldırmadan, süre boyunca sürekli yumruk üret. Hacim ve dayanıklılık testi.", descEn: "Produce punches continuously the whole time, giving the opponent no breath. A volume and endurance test.", equip: [], rest: 45, met: 9, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Feint + patlayıcı giriş", nameEn: "Feint + explosive entry", sets: "3x3 dk", duration: "3 dk", desc: "Yumruk atacakmış gibi yapıp kandır, sonra patlayıcı bir girişle kombinasyonu boşalt.", descEn: "Fake as if you'll punch to fool them, then unload the combination with an explosive entry.", equip: [], rest: 45, met: 9, hedefKas: "Omuz, Sırt, Core" },
   ],
   bag: [
-    // — Çaylak —
-    { level: "beginner", name: "Jab-cross torba", nameEn: "Jab-cross on bag", sets: "4x2 dk", duration: "2 dk", desc: "Kontrollü vur, torbayı sallamadan tam form.", descEn: "Controlled, full form without swinging the bag.", equip: ["bag"] },
-    { level: "beginner", name: "Tek tek güç vuruşu", nameEn: "Single power shots", sets: "4x2 dk", duration: "2 dk", desc: "Her vuruşta ağırlık transferini hisset.", descEn: "Feel the weight transfer on each shot.", equip: ["bag"] },
-    { level: "beginner", name: "Hayali torba (gölge güç)", nameEn: "Shadow bag (no equipment)", sets: "4x2 dk", duration: "2 dk", desc: "Torba yoksa havaya tam güç vuruş tekrarı.", descEn: "No bag? Full-power punches into the air.", equip: [] },
-    { level: "beginner", name: "1-2-3 temel kombinasyon", nameEn: "Basic 1-2-3 combo", sets: "4x2 dk", duration: "2 dk", desc: "Jab-cross-kroşe, akıcı geçişle vur.", descEn: "Jab-cross-hook with fluid transitions.", equip: ["bag"] },
-    { level: "beginner", name: "Düz vuruş dayanıklılığı", nameEn: "Straight-punch endurance", sets: "4x2 dk", duration: "2 dk", desc: "Sürekli jab-cross, kol dayanıklılığı inşa et.", descEn: "Continuous jab-cross, build arm endurance.", equip: ["bag"] },
-    // — Yükseliş —
-    { level: "intermediate", name: "1-2-3-2 güç serisi", nameEn: "1-2-3-2 power series", sets: "5x3 dk", duration: "3 dk", desc: "Hızlı-hızlı-güçlü-güçlü ritmi.", descEn: "Fast-fast-power-power rhythm.", equip: ["bag"] },
-    { level: "intermediate", name: "Vücut-baş kat geçişi", nameEn: "Body-head level change", sets: "5x2 dk", duration: "2 dk", desc: "Diz bük, karaciğere kroşe, ayağa kalk baş hizasına.", descEn: "Bend knees, hook to liver, rise to head.", equip: ["bag"] },
-    { level: "intermediate", name: "1-2-5-6 (iki aparkat)", nameEn: "1-2-5-6 (double uppercut)", sets: "4x3 dk", duration: "3 dk", desc: "Düz vuruşlar eli yukarı çeker, aparkutlar alttan.", descEn: "Straights pull guard up, uppercuts from below.", equip: ["bag"] },
-    { level: "intermediate", name: "Jab-cross-aparkat (1-2-6)", nameEn: "Jab-cross-uppercut (1-2-6)", sets: "4x3 dk", duration: "3 dk", desc: "Düz vuruşlar sonrası alttan aparkat sok.", descEn: "Drive an uppercut from below after the straights.", equip: ["bag"] },
-    { level: "intermediate", name: "Hız + güç değişimi", nameEn: "Speed-power switch", sets: "4x2 dk", duration: "2 dk", desc: "Hafif hızlı seri, ardından tek ağır vuruş.", descEn: "Light fast series, then one heavy shot.", equip: ["bag"] },
-    { level: "intermediate", name: "Gölge güç (torbasız vücut-baş)", nameEn: "Shadow power level-change", sets: "4x2 dk", duration: "2 dk", desc: "Torbasız da olur — kat geçişli kombinasyon.", descEn: "Works without a bag — level-change combos.", equip: [] },
-    // — Pro —
-    { level: "pro", name: "Patlayıcı kombinasyon kırılmaları", nameEn: "Explosive combination breaks", sets: "6x3 dk", duration: "3 dk", desc: "10 sn maksimum patlama, 10 sn tempo — döngü. GGG baskısı.", descEn: "10 s max burst, 10 s tempo — cycle. GGG pressure.", equip: ["bag"] },
-    { level: "pro", name: "Canelo kontra atak drili", nameEn: "Canelo counter-attack drill", sets: "5x3 dk", duration: "3 dk", desc: "Eğil, ardından sağ kroşe-sol kroşe vücut-baş.", descEn: "Roll, then right hook-left hook body-head.", equip: ["bag"] },
-    { level: "pro", name: "Ağır torba interval drili", nameEn: "Heavy bag interval drill", sets: "8x", duration: "30 sn", desc: "30 sn maksimum hacim, 30 sn dinlenme. Anaerobik.", descEn: "30 s max volume, 30 s rest. Anaerobic.", equip: ["bag"] },
-    { level: "pro", name: "Son round yıkım serisi", nameEn: "Final-round demolition", sets: "3x3 dk", duration: "3 dk", desc: "Kollar yanarken durmadan vur. 12. round simülasyonu.", descEn: "Keep punching while arms burn. Round 12.", equip: ["bag"] },
-    { level: "pro", name: "Maksimum hız patlaması (gölge)", nameEn: "Max speed burst (shadow)", sets: "5x1 dk", duration: "1 dk", desc: "1 dakika durmadan en yüksek vuruş hızı.", descEn: "1 minute nonstop top punch speed.", equip: [] },
-    { level: "pro", name: "Tyson çift kroşe yıkımı", nameEn: "Tyson double-hook demolition", sets: "5x3 dk", duration: "3 dk", desc: "Eğil, sol kroşe vücut - sağ kroşe baş. Peek-a-boo gücü.", descEn: "Slip, left hook body - right hook head. Peek-a-boo power.", equip: ["bag"] },
-    { level: "pro", name: "Foreman ağır el baskısı", nameEn: "Foreman heavy-hand pressure", sets: "5x3 dk", duration: "3 dk", desc: "Her vuruş maksimum ağırlık, torbayı duvara yasla.", descEn: "Max weight on every shot, drive the bag to the wall.", equip: ["bag"] },
-    { level: "pro", name: "9 vuruşluk patlama serisi", nameEn: "9-punch blast series", sets: "6x", duration: "30 sn", desc: "30 saniyede 9'lu seri × tekrar. Anaerobik dayanıklılık.", descEn: "9-punch series x repeat in 30 s. Anaerobic endurance.", equip: ["bag"] },
-    { level: "pro", name: "Aparkat + kroşe yakın mesafe", nameEn: "Uppercut + hook infighting", sets: "5x2 dk", duration: "2 dk", desc: "Klinç mesafesinde alttan aparkat, yandan kroşe. İç savaş.", descEn: "Uppercut from below, hook from the side at clinch range. Infighting.", equip: ["bag"] },
-    { level: "pro", name: "Maksimum güç tek vuruş (one-shot)", nameEn: "Max-power single shot", sets: "6x", duration: "20 sn", desc: "Her 20 sn'de tek ama tam yıkıcı vuruş. Nakavt gücü.", descEn: "One but fully devastating shot every 20 s. Knockout power.", equip: ["bag"] },
+    { level: "beginner", name: "Jab-cross torba", nameEn: "Jab-cross on bag", sets: "3x3 dk", duration: "3 dk", desc: "Torbayı savurmadan, kontrollü ve tam formda vur. Ağırlık transferini her yumrukta hisset.", descEn: "Hit controlled and in full form without swinging the bag. Feel the weight transfer on every punch.", equip: ["bag"], rest: 60, met: 7.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "Tek tek güç vuruşu", nameEn: "Single power shots", sets: "3x2 dk", duration: "2 dk", desc: "Her vuruşu tek tek, ağırlığını arkadan öne aktararak at. Gücün kaynağını öğren.", descEn: "Throw each punch one by one, transferring your weight from back to front. Learn the source of power.", equip: ["bag"], rest: 60, met: 7.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "Hayali rakip torba", nameEn: "Imaginary opponent bag", sets: "3x3 dk", duration: "3 dk", desc: "Torba sanki rakibinmiş gibi bloklar yap ve öğrendiklerini uygula.", descEn: "Treat the bag as if it's your opponent: throw blocks and apply what you've learned.", equip: [], rest: 60, met: 7.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "1-2-3 temel kombinasyon", nameEn: "Basic 1-2-3 combo", sets: "3x3 dk", duration: "3 dk", desc: "Jab-cross-kroşeyi akıcı geçişlerle, kesintisiz bir seri halinde vur.", descEn: "Throw jab-cross-hook as one uninterrupted series with smooth transitions.", equip: ["bag"], rest: 60, met: 6, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "Düz vuruş dayanıklılığı", nameEn: "Straight-punch endurance", sets: "3x3 dk", duration: "3 dk", desc: "Sürekli jab-cross at; amaç kol ve omuz dayanıklılığını inşa etmek.Vuramaycak duruma gelirsen eller yukarda dinlen ve devam et.", descEn: "Throw jab-cross continuously; the goal is to build arm and shoulder endurance. If you can't punch anymore, rest with hands up and continue.", equip: ["bag"], rest: 60, met: 7.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "1-2-3-2 güç serisi", nameEn: "1-2-3-2 power series", sets: "3x3 dk", duration: "3 dk", desc: "Hızlı-hızlı-güçlü-güçlü ritmiyle vur; ilk ikisi açar, son ikisi yıkar.", descEn: "Hit with a fast-fast-strong-strong rhythm; the first two open, the last two break down.", equip: ["bag"], rest: 60, met: 8, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Vücut-baş kat geçişi", nameEn: "Body-head level change", sets: "3x3 dk", duration: "3 dk", desc: "Diz bükerek karaciğere kroşe at hemen arkasına beklemeden çeneye ikinci yumruk.İki açıdanda yap. Hedef değiştirmeyi öğren.", descEn: "Bend the knees and hook to the liver, then a second punch to the chin without waiting. Do it from both angles. Learn to switch targets.", equip: ["bag"], rest: 60, met: 8, hedefKas: "Core, Omuz, Bacak" },
+    { level: "intermediate", name: "1-2-5-6 (iki aparkat)", nameEn: "1-2-5-6 (double uppercut)", sets: "3x3 dk", duration: "3 dk", desc: "Düz vuruşlar rakibin elini yukarı çeker, ardından gelen aparkatlar alttan girer.", descEn: "The straight punches pull the opponent's hands up, then the uppercuts come in from below.", equip: ["bag"], rest: 60, met: 8, hedefKas: "Core, Omuz, Bacak" },
+    { level: "intermediate", name: "Jab-cross-aparkat (1-2-6)", nameEn: "Jab-cross-uppercut (1-2-6)", sets: "3x3 dk", duration: "3 dk", desc: "Düz vuruşların ardından alttan keskin bir aparkat sok.", descEn: "After the straight punches, drive in a sharp uppercut from below.", equip: ["bag"], rest: 60, met: 8, hedefKas: "Core, Omuz, Bacak" },
+    { level: "intermediate", name: "Hız + güç değişimi", nameEn: "Speed-power switch", sets: "3x3 dk", duration: "3 dk", desc: "Hafif ve hızlı bir serinin ardından tek bir ağır vuruş patlat.", descEn: "After a light, fast series, explode with one heavy shot.", equip: ["bag"], rest: 60, met: 8, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "Jab Cross atan rakip torba", nameEn: "Jab-cross opponent bag", sets: "3x3 dk", duration: "3 dk", desc: "Rakibiniz size sürekli jab cross atıyor bunları savusturup kombinasyon uygulayın. Torbayı rakibin gibi gör", descEn: "Your opponent keeps throwing jab-crosses at you; deflect them and apply your combinations. See the bag as the opponent.", equip: [], rest: 60, met: 8, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "Patlayıcı kombinasyon kırılmaları", nameEn: "Explosive combination breaks", sets: "3x3 dk", duration: "3 dk", desc: "20 sn maksimum patlama, 10 sn tempo şeklinde döngü kur. Sürekli baskı kurma çalışması.Yumruklar sürekli atılmalı süre bitene kadar.", descEn: "Build a loop of 20s max burst, 10s tempo. Keep punching constantly until time runs out. Continuous pressure work.", equip: ["bag"], rest: 50, met: 11, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Canelo kontra atak drili", nameEn: "Canelo counter-attack drill", sets: "3x3 dk", duration: "3 dk", desc: "Önce eğil yada roll, ardından sağ kroşe çeneye - rakibin karaciğerine sol kroşe ve başa kontra çık.Hiç durmadan tekrarlanmalı.", descEn: "First dip or roll, then counter with a right hook to the chin, a left hook to the opponent's liver and to the head. Repeat nonstop.", equip: ["bag"], rest: 60, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Ağır torba interval drili", nameEn: "Heavy bag interval drill", sets: "30x30 sn", duration: "30sn", desc: "30 sn maksimum hacimde vur, 15 sn dinlen. Anaerobik dayanıklılık geliştirir.", descEn: "Hit at max volume for 30s, rest 15s. Builds anaerobic endurance.", equip: ["bag"], rest: 15, met: 11, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "1-2-3 çık ve 1-2-3(b)", nameEn: "1-2-3 out & 1-2-3(body)", sets: "3x3 dk", duration: "3 dk", desc: "Kombinasyon jab cross hook adımlamayla geri cık ve tekrar jab cross karaciğer ile rakibi bitir.Sürekli yapılmalı yorulmak yok.", descEn: "Combo jab-cross-hook, step out, then finish the opponent with jab-cross-liver again. Do it constantly, no getting tired.", equip: ["bag"], rest: 60, met: 11, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "1-1(b)-2 roll kroşe", nameEn: "1-1(body)-2 roll hook", sets: "3x3 dk", duration: "3 dk", desc: "İlk jab yüze sonra gövdeye hiç beklemeden cross yüze gelen yumrugun altından eğil overhand yada kroşe ile rakibi bitir", descEn: "First jab to the face, then to the body without pausing, cross to the face; dip under the incoming punch and finish with an overhand or hook.", equip: [], rest: 50, met: 11, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Tyson çift kroşe yıkımı", nameEn: "Tyson double-hook demolition", sets: "3x3 dk", duration: "3 dk", desc: "Eğil ve peek-a-boo gücüyle patla: sol kroşe vücuda, hemen ardından sağ kroşe başa sonra sağ kroşe vucuda sol kroşe başa. Tyson'ın imza yıkımı", descEn: "Dip and explode with peek-a-boo power: left hook to the body, then right hook to the head, then right hook to the body, left hook to the head. Tyson's signature demolition.", equip: ["bag"], rest: 60, met: 11, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "Foreman ağır el baskısı", nameEn: "Foreman heavy-hand pressure", sets: "3x2dk", duration: "2 dk", desc: "Yumrukdan slip yada roll mutlaka olmalı arkasına hemen  bitirici yumruk durmadan tekrarla", descEn: "Always slip or roll a punch first, then immediately a finishing shot right behind it. Repeat nonstop.", equip: ["bag"], rest: 30, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "9 vuruşluk patlama serisi", nameEn: "9-punch blast series", sets: "3x3 dk", duration: "3 dk", desc: "30 saniyede 9'luk seriler patlat, 10 saniye eller yukarıda maçtaymıs gibi dinlen jablar atılabilir rakibi yaklastırma tedirgin et. Anaerobik dayanıklılık çalışması.", descEn: "Fire 9-punch series in 30 seconds, then rest 10 seconds with hands up as if in a match — you can throw jabs, keep the opponent away and unsettled. Anaerobic endurance work.", equip: ["bag"], rest: 60, met: 11, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Aparkat + kroşe yakın mesafe", nameEn: "Uppercut + hook infighting", sets: "3x3 dk", duration: "3 dk", desc: "Klinç mesafesinde güçlü ve seri yumruklar alttan aparkat, yandan kroşe at iki taraftanda yapılmalı. Yakın mesafe (iç savaş) çalışması.", descEn: "At clinch range, strong and rapid punches: uppercut from below, hook from the side, do it from both sides. Close-range (infighting) work.", equip: ["bag"], rest: 45, met: 8.5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "Maksimum güç tek vuruş (one-shot)", nameEn: "Max-power single shot", sets: "3x3 dk", duration: "3 dk", desc: "Tek ama tam yıkıcı vuruş at.Her çeşit yumruk atılabilir ama hiç durulmamalı. Nakavt gücünü geliştirir.", descEn: "Throw a single but fully devastating shot. Any punch type is allowed but never stop. Develops knockout power.", equip: ["bag"], rest: 60, met: 11, hedefKas: "Omuz, Sırt, Core" },
   ],
   footwork: [
-    // — Çaylak —
-    { level: "beginner", name: "İleri-geri temel adım", nameEn: "Basic in-out step", sets: "4x2 dk", duration: "2 dk", desc: "Küçük adımlar, ayaklar çaprazlanmaz.", descEn: "Small steps, feet never cross.", equip: [] },
-    { level: "beginner", name: "Yan adım (sağ-sol)", nameEn: "Lateral step (R-L)", sets: "4x2 dk", duration: "2 dk", desc: "Duruş genişliği sabit, denge merkezde.", descEn: "Keep stance width, balance centered.", equip: [] },
-    { level: "beginner", name: "Atlama ipi temel", nameEn: "Basic jump rope", sets: "4x2 dk", duration: "2 dk", desc: "Sabit tempo, ayak bileği esnekliği.", descEn: "Steady tempo, ankle springiness.", equip: ["rope"] },
-    { level: "beginner", name: "Yerinde ip taklidi", nameEn: "Shadow rope (no rope)", sets: "4x2 dk", duration: "2 dk", desc: "İp yoksa el-ayak ritmini taklit et.", descEn: "No rope? Mimic the hand-foot rhythm.", equip: [] },
-    { level: "beginner", name: "Pivot temeli (ön ayak)", nameEn: "Pivot basics (lead foot)", sets: "3x2 dk", duration: "2 dk", desc: "Ön ayak ekseninde dön, guard'ı koru.", descEn: "Rotate on the lead foot, keep the guard up.", equip: [] },
-    { level: "beginner", name: "Üçgen adım (triangle step)", nameEn: "Triangle step", sets: "3x2 dk", duration: "2 dk", desc: "Köşegen adımlarla pozisyon değiştir.", descEn: "Change position with diagonal steps.", equip: [] },
-    { level: "beginner", name: "Yer merdiveni: tek adım (ladder)", nameEn: "Ladder: one step per box", sets: "4x45 sn", duration: "45 sn", desc: "Her kareye bir ayak, hızlı ve ritmik ilerle. Koordinasyon temeli.", descEn: "One foot per box, move fast and rhythmic. Coordination base.", equip: [] },
-    { level: "beginner", name: "Yer merdiveni: iki ayak içeri", nameEn: "Ladder: two feet in", sets: "4x45 sn", duration: "45 sn", desc: "Her kareye iki ayak, küçük hızlı adımlar. Ayak hızı.", descEn: "Two feet in each box, small quick steps. Foot speed.", equip: [] },
-    // — Yükseliş —
-    { level: "intermediate", name: "Pivot + açı bulma", nameEn: "Pivot + find angle", sets: "4x2 dk", duration: "2 dk", desc: "Ön ayakta pivot, rakibin yanına geç.", descEn: "Pivot on lead foot, step to their side.", equip: [] },
-    { level: "intermediate", name: "Yer merdiveni: yan ayak (lateral)", nameEn: "Ladder: lateral shuffle", sets: "4x45 sn", duration: "45 sn", desc: "Yana dönük, içeri-dışarı adımlarla merdiveni geç. Lateral hız.", descEn: "Face sideways, in-out steps down the ladder. Lateral speed.", equip: [] },
-    { level: "intermediate", name: "Yer merdiveni: Ickey shuffle", nameEn: "Ladder: Ickey shuffle", sets: "4x45 sn", duration: "45 sn", desc: "İçeri-içeri-dışarı ritmi, boks duruşunu koru. Ritim ve denge.", descEn: "In-in-out rhythm, keep your boxing stance. Rhythm and balance.", equip: [] },
-    { level: "intermediate", name: "Yer merdiveni + jab çıkışı", nameEn: "Ladder + jab exit", sets: "4x1 dk", duration: "1 dk", desc: "Merdiven sonunda patlayıcı jab at, geri dön. Ayak-el bağlantısı.", descEn: "Explosive jab at the end of the ladder, reset. Foot-hand link.", equip: [] },
-    { level: "intermediate", name: "L-step köşe çıkışı", nameEn: "L-step corner escape", sets: "4x2 dk", duration: "2 dk", desc: "Köşeden L çizerek çık, merkeze dön.", descEn: "Step out in an L, return to center.", equip: [] },
-    { level: "intermediate", name: "İleri-geri mekik + vuruş", nameEn: "In-out shuttle + punch", sets: "4x2 dk", duration: "2 dk", desc: "Menzile patla, vur, hemen çık.", descEn: "Burst in, punch, exit immediately.", equip: [] },
-    { level: "intermediate", name: "Yana kayma + kontra", nameEn: "Lateral slide + counter", sets: "4x2 dk", duration: "2 dk", desc: "Yana kay, açıdan kontra at.", descEn: "Slide laterally, counter from the angle.", equip: [] },
-    { level: "intermediate", name: "Geri adım + jab (out-boxing)", nameEn: "Step back + jab", sets: "4x2 dk", duration: "2 dk", desc: "Mesafeyi koru, geri adımda jab'le rahatsız et.", descEn: "Keep distance, jab on the back step.", equip: [] },
-    { level: "intermediate", name: "Atlama ipi çift tempo", nameEn: "Jump rope double tempo", sets: "5x2 dk", duration: "2 dk", desc: "Hızlı-yavaş tempo geçişleri.", descEn: "Fast-slow tempo switches.", equip: ["rope"] },
-    // — Pro —
-    { level: "pro", name: "Tyson Peek-a-boo adımları", nameEn: "Tyson Peek-a-boo steps", sets: "5x3 dk", duration: "3 dk", desc: "Baş hareketiyle yana kay, içeri gir, kroşe açısı bul.", descEn: "Head movement, slide in, find hook angles.", equip: [] },
-    { level: "pro", name: "Lomachenko matrix pivotları", nameEn: "Lomachenko matrix pivots", sets: "5x2 dk", duration: "2 dk", desc: "Rakibin kör noktasına sürekli geç. Ayak hızı.", descEn: "Constantly step to the blind side. Foot speed.", equip: [] },
-    { level: "pro", name: "Double-under (çift tur ip)", nameEn: "Double-unders", sets: "5x2 dk", duration: "2 dk", desc: "Tek sıçrayışta ip iki tur. Patlayıcı baldır.", descEn: "Rope twice per jump. Explosive calves.", equip: ["rope"] },
-    { level: "pro", name: "Hız merdiveni simülasyonu", nameEn: "Speed ladder sim", sets: "5x1 dk", duration: "1 dk", desc: "Yerinde maksimum hızlı küçük adımlar.", descEn: "Max-speed tiny steps in place.", equip: [] },
-    { level: "pro", name: "Yer merdiveni: çapraz + açı kombosu", nameEn: "Ladder: crossover + angle combo", sets: "5x1 dk", duration: "1 dk", desc: "Çapraz adımlarla merdiveni geç, çıkışta açı bul ve 1-2 at. Elit koordinasyon.", descEn: "Crossover steps down the ladder, find an angle on exit and throw 1-2. Elite coordination.", equip: [] },
-    { level: "pro", name: "Yorgun bacak teknik koruma", nameEn: "Fatigued-leg control", sets: "3x3 dk", duration: "3 dk", desc: "10-11. round, denge ve hız korunmalı.", descEn: "Rounds 10-11, keep balance and speed.", equip: [] },
-    { level: "pro", name: "Ali shuffle (hızlı ayak değişimi)", nameEn: "Ali shuffle", sets: "5x2 dk", duration: "2 dk", desc: "Yerinde şimşek hızında ayak değişimi, ardından jab.", descEn: "Lightning-fast foot switch in place, then a jab.", equip: [] },
-    { level: "pro", name: "Çapraz adım kesme (cutting the ring)", nameEn: "Cutting the ring", sets: "4x3 dk", duration: "3 dk", desc: "Rakibin kaçış yolunu kes, köşeye sıkıştır.", descEn: "Cut off the opponent's escape, trap them in the corner.", equip: [] },
-    { level: "pro", name: "Çoklu yön sıçrama (plyometrik)", nameEn: "Multi-directional bounds", sets: "4x40 sn", duration: "40 sn", desc: "İleri-yan-geri patlayıcı sıçramalar. Patlayıcı ayak gücü.", descEn: "Explosive forward-lateral-back bounds. Explosive foot power.", equip: [] },
-    { level: "pro", name: "Pivot + omuz feinti kombosu", nameEn: "Pivot + shoulder feint combo", sets: "4x2 dk", duration: "2 dk", desc: "Pivotla açı bul, omuz feinti at, kör noktadan vur.", descEn: "Find the angle with a pivot, shoulder feint, strike from the blind side.", equip: [] },
-    { level: "pro", name: "Out-fighter mesafe yönetimi", nameEn: "Out-fighter range control", sets: "4x3 dk", duration: "3 dk", desc: "Uzun mesafede kal, sürekli hareket et, jab'le yönet.", descEn: "Stay long, keep moving, control with the jab.", equip: [] },
+    { level: "beginner", name: "İleri-geri temel adım", nameEn: "Basic in-out step", sets: "3x2 dk", duration: "2 dk", desc: "Küçük adımlarla ileri-geri hareket et; ayaklar asla çaprazlanmasın.Eller yukarda çeneyi koru", descEn: "Move in and out with small steps; the feet should never cross. Hands up, protect the chin.", equip: [], rest: 40, met: 4, hedefKas: "Bacak, Baldır" },
+    { level: "beginner", name: "Yan adım (sağ-sol)", nameEn: "Lateral step (R-L)", sets: "3x2 dk", duration: "2 dk", desc: "Duruş genişliğini sabit tut, ağırlık merkezini koruyarak yana kay.Eller yukarda çeneyi koru", descEn: "Keep the stance width steady and slide sideways keeping your center of gravity. Hands up, protect the chin.", equip: [], rest: 40, met: 5, hedefKas: "Bacak, Baldır" },
+    { level: "beginner", name: "Atlama ipi temel", nameEn: "Basic jump rope", sets: "3x3 dk", duration: "3 dk", desc: "Sabit bir tempoyla ip atla; ayak bileği esnekliğini ve ritmini geliştir.", descEn: "Jump rope at a steady tempo; develops ankle elasticity and rhythm.", equip: ["rope"], rest: 60, met: 10, hedefKas: "Baldır, Omuz" },
+    { level: "beginner", name: "Yerinde ip taklidi", nameEn: "Shadow rope (no rope)", sets: "3x2 dk", duration: "2 dk", desc: "İp yoksa el ve ayak ritmini ipsiz taklit et; aynı koordinasyonu çalış.", descEn: "No rope? Mimic the hand and foot rhythm without one; train the same coordination.", equip: [], rest: 30, met: 4, hedefKas: "Baldır, Omuz" },
+    { level: "beginner", name: "Pivot temeli (ön ayak)", nameEn: "Pivot basics (lead foot)", sets: "3x2 dk", duration: "2 dk", desc: "Ön ayağını eksen alarak dön, bu sırada guard'ını hep yukarıda tut.Düzgün yapdığından emin ol.", descEn: "Turn using your lead foot as the axis, keeping your guard up the whole time. Make sure you do it properly.", equip: [], rest: 40, met: 4, hedefKas: "Bacak, Baldır" },
+    { level: "beginner", name: "Üçgen adım (triangle step)", nameEn: "Triangle step", sets: "3x2 dk", duration: "2 dk", desc: "Köşegen (üçgen) adımlarla pozisyon değiştir, rakibe göre açını ayarla.", descEn: "Change position with diagonal (triangle) steps, adjusting your angle relative to the opponent.", equip: [], rest: 40, met: 5, hedefKas: "Bacak, Baldır" },
+    { level: "beginner", name: "Yer merdiveni: tek adım (ladder)", nameEn: "Ladder: one step per box", sets: "3x2 dk", duration: "2 dk", desc: "Her kareye bir ayak basarak hızlı ve ritmik ilerle. Ayak koordinasyonunun temeli.Bir ayak yukarda olmalı eller çenede", descEn: "Step one foot into each box, moving fast and rhythmically. The basis of foot coordination. One foot should stay up, hands at the chin.", equip: [], rest: 40, met: 5, hedefKas: "Bacak, Baldır" },
+    { level: "beginner", name: "Yer merdiveni: iki ayak içeri", nameEn: "Ladder: two feet in", sets: "3x2 dk", duration: "2 dk", desc: "Her kareye iki ayak bas, küçük ve hızlı adımlarla geç. Ayak hızını artırır.Sol ayak geri gelirken sağ ayak hemen karenin içine girmeli eller çenede unutma.", descEn: "Put both feet in each box, passing through with small fast steps. Increases foot speed. As the left foot comes back, the right must enter the box immediately — don't forget, hands at the chin.", equip: [], rest: 40, met: 5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "Pivot + açı bulma", nameEn: "Pivot + find angle", sets: "3x3 dk", duration: "3 dk", desc: "Ön ayakta pivot yaparak rakibin yan tarafına geç, yeni açıdan saldırı fırsatı yarat.", descEn: "Pivot on the lead foot to move to the opponent's side, creating an attacking chance from a new angle.", equip: [], rest: 40, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "Yer merdiveni: yan ayak (lateral)", nameEn: "Ladder: lateral shuffle", sets: "3x3 dk", duration: "3 dk", desc: "Yana dönük dur, içeri-dışarı adımlarla merdiveni geç. Lateral (yanal) hızını geliştirir.Eller yukarıda.", descEn: "Stand sideways and pass through the ladder with in-out steps. Develops lateral speed. Hands up.", equip: [], rest: 40, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "Yer merdiveni: Ickey shuffle", nameEn: "Ladder: Ickey shuffle", sets: "3x3 dk", duration: "3 dk", desc: "İçeri-içeri-dışarı ritmiyle ilerle, bu sırada boks duruşunu koru. Ritim ve denge çalışması.İçeri adım atarken jab-cross at.", descEn: "Move with an in-in-out rhythm while keeping your boxing stance. Rhythm and balance work. Throw a jab-cross as you step in.", equip: [], rest: 40, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "Yer merdiveni + jab çıkışı", nameEn: "Ladder + jab exit", sets: "3x3 dk", duration: "3 dk", desc: "Karelere basarken patlayıcı bir jab at ve geri dön. Ayak ile el bağlantısını kurar.", descEn: "Throw an explosive jab as you step on the boxes and return. Builds the foot-to-hand connection.", equip: [], rest: 40, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "L-step köşe çıkışı", nameEn: "L-step corner escape", sets: "3x3 dk", duration: "3 dk", desc: "Köşeden L harfi çizerek çık ve merkeze dön. Sıkışınca kaçış becerisi.", descEn: "Exit the corner tracing an 'L' and return to center. An escape skill for when you're cornered.", equip: [], rest: 40, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "İleri-geri vuruş calısması", nameEn: "In-out punch drill", sets: "3x3 dk", duration: "3 dk", desc: "Menzile hızla patla, vur ve hemen geri çık. Vur-kaç çalışması.Örnek rakibin üstüne giderek jab cross adımlamayla geriye cıkarken side step kroşeyle cıkılabilir.", descEn: "Explode into range fast, hit, and pull back immediately. Hit-and-run work. For example, go in on the opponent with a jab-cross and exit backward with a side-step hook.", equip: [], rest: 45, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "Yana kayma + kontra", nameEn: "Lateral slide + counter", sets: "3x3 dk", duration: "3 dk", desc: "Yana kayarak vuruştan çık, yeni açıdan kontra at.", descEn: "Slide sideways to escape the punch, then counter from the new angle.", equip: [], rest: 60, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "Geri adım + jab cross (out-boxing)", nameEn: "Step-back + jab-cross (out-boxing)", sets: "3x3 dk", duration: "3 dk", desc: "Mesafeyi koru; geri adım atarken jab cross ile rakibi rahatsız et.", descEn: "Keep your distance; harass the opponent with a jab-cross while stepping back.", equip: [], rest: 60, met: 5.5, hedefKas: "Bacak, Baldır" },
+    { level: "intermediate", name: "Atlama ipi çift tempo", nameEn: "Jump rope double tempo", sets: "3x3 dk", duration: "3 dk", desc: "İp atlarken hızlı ve yavaş tempo arasında geçiş yap.", descEn: "Switch between fast and slow tempo while jumping rope.", equip: ["rope"], rest: 45, met: 10, hedefKas: "Baldır, Omuz" },
+    { level: "pro", name: "Tyson Peek-a-boo adımları", nameEn: "Tyson Peek-a-boo steps", sets: "3x3 dk", duration: "3 dk", desc: "Baş hareketiyle yana kay, içeri gir ve kroşe atacak açıyı yakala.", descEn: "Slide aside with head movement, step in, and find the angle to throw a hook.", equip: [], rest: 40, met: 6, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Lomachenko matrix pivotları", nameEn: "Lomachenko matrix pivots", sets: "3x3 dk", duration: "3 dk", desc: "Sürekli pivot yaparak rakibin kör noktasına geç. Üst düzey ayak hızı.", descEn: "Constantly pivot to get to the opponent's blind spot. Elite-level footwork.", equip: [], rest: 40, met: 6, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Double-under (çift tur ip)", nameEn: "Double-unders", sets: "3x3 dk", duration: "3 dk", desc: "Tek sıçrayışta ipi iki tur çevir. Patlayıcı baldır gücü ister.", descEn: "Spin the rope twice in a single jump. Requires explosive calf power.", equip: ["rope"], rest: 45, met: 8.5, hedefKas: "Baldır, Omuz" },
+    { level: "pro", name: "Hız merdiveni simülasyonu", nameEn: "Speed ladder sim", sets: "3x3 dk", duration: "3 dk", desc: "Yerinde, maksimum hızda küçük adımlar at ve her adımda mutlaka yumrukta olsun El- Ayak frekansını yükseltir.", descEn: "Take small steps at max speed in place, and there must be a punch on every step. Raises hand-foot frequency.", equip: [], rest: 40, met: 6, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Yer merdiveni: çapraz + açı kombosu", nameEn: "Ladder: crossover + angle combo", sets: "3x3 dk", duration: "3 dk", desc: "Çapraz adımlarla merdiveni geç, çıkışta açı bulup 1-2 at. Elit koordinasyon.", descEn: "Pass the ladder with crossover steps, find an angle on exit and throw a 1-2. Elite coordination.", equip: [], rest: 40, met: 6, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Yorgun bacak teknik koruma", nameEn: "Fatigued-leg control", sets: "3x3 dk", duration: "3 dk", desc: "Sağ elini atarken cross atarken sol ayağını yakala ,Sol elini jab atarken sağ ayağını yakala hiç durmadan yapılmalı.", descEn: "When you throw the right (cross) catch your left foot; when you throw the left (jab) catch your right foot. Must be done nonstop.", equip: [], rest: 50, met: 4.5, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Ali shuffle (hızlı ayak değişimi)", nameEn: "Ali shuffle", sets: "3x3 dk", duration: "3 dk", desc: "Yerinde şimşek hızıyla ayak değiştir, ardından jab cross at. Ali'nin imza hareketi.Ayak arka tabanı ile dans sonrası jab cross", descEn: "Switch feet at lightning speed in place, then throw a jab-cross. Ali's signature move. Dance on the balls of your feet, then jab-cross.", equip: [], rest: 40, met: 6, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Çapraz adım kesme (cutting the ring)", nameEn: "Cutting the ring", sets: "3x2 dk", duration: "2dk", desc: "Rakibin kaçış yolunu çapraz adımla kes, köşeye sıkıştır.", descEn: "Cut off the opponent's escape route with a diagonal step and trap them in the corner.", equip: [], rest: 40, met: 6, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Çoklu yön sıçrama (plyometrik)", nameEn: "Multi-directional bounds", sets: "3x3 dk", duration: "3 dk", desc: "İleri, yana ve geri patlayıcı sıçramalar yap. Patlayıcı ayak gücü.", descEn: "Do explosive bounds forward, sideways and back. Explosive foot power.", equip: [], rest: 30, met: 8.5, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Pivot + omuz feinti kombosu", nameEn: "Pivot + shoulder feint combo", sets: "3x2 dk", duration: "3 dk", desc: "Pivotla açı bul, omuzla sahte hamle yap, kör noktadan vur.", descEn: "Find an angle with a pivot, fake with the shoulder, and strike from the blind spot.", equip: [], rest: 40, met: 6, hedefKas: "Bacak, Baldır" },
+    { level: "pro", name: "Out-fighter mesafe yönetimi", nameEn: "Out-fighter range control", sets: "3x2 dk", duration: "3 dk", desc: "Uzun mesafede kal, sürekli hareket et ve jab'le dövüşü yönet.", descEn: "Stay at long range, keep moving, and control the fight with the jab.", equip: [], rest: 30, met: 6, hedefKas: "Bacak, Baldır" },
   ],
   strength: [
-    // — Çaylak (10) — gerçekçi, azalan tekrar mantığı
-    { level: "beginner", name: "Standart şınav", nameEn: "Standard push-ups", sets: "15-12-10-8", duration: null, desc: "Set başına azalan tekrar: 15, 12, 10, 8. Tam form, gövde düz hat.", descEn: "Descending reps per set: 15, 12, 10, 8. Full form, straight line.", equip: [] },
-    { level: "beginner", name: "Squat (hava)", nameEn: "Air squats", sets: "20-18-15", duration: null, desc: "20, 18, 15. Diz parmak ucunu geçmesin, kalça geriye.", descEn: "20, 18, 15. Knees behind toes, hips back.", equip: [] },
-    { level: "beginner", name: "Plank", nameEn: "Plank", sets: "3x40 sn", duration: "40 sn", desc: "Kalça düşmesin, core sıkı.", descEn: "Hips up, core tight.", equip: [] },
-    { level: "beginner", name: "Dambıl curl (hafif)", nameEn: "Dumbbell curl (light)", sets: "15-12-12", duration: null, desc: "15, 12, 12. Kontrollü, kol gücü temeli.", descEn: "15, 12, 12. Controlled, base arm strength.", equip: ["dumbbell"] },
-    { level: "beginner", name: "Mekik (sit-up)", nameEn: "Sit-ups", sets: "20-15-15", duration: null, desc: "20, 15, 15. Karın gücü, kontrollü kalk.", descEn: "20, 15, 15. Core strength, rise with control.", equip: [] },
-    { level: "beginner", name: "Sırt üstü köprü (glute bridge)", nameEn: "Glute bridge", sets: "20-18-15", duration: null, desc: "20, 18, 15. Kalça ve bel gücü, duruş desteği.", descEn: "20, 18, 15. Hip and lower-back strength.", equip: [] },
-    { level: "beginner", name: "Diz üstü şınav", nameEn: "Knee push-ups", sets: "15-12-10", duration: null, desc: "15, 12, 10. Tam şınava hazırlık, üst beden gücü.", descEn: "15, 12, 10. Builds toward full push-ups.", equip: [] },
-    { level: "beginner", name: "Yan plank (her taraf)", nameEn: "Side plank (each side)", sets: "3x25 sn", duration: "25 sn", desc: "Her tarafta 25 sn. Yan core ve denge.", descEn: "25 s each side. Oblique core and balance.", equip: [] },
-    { level: "beginner", name: "Geri hamle (lunge)", nameEn: "Reverse lunge", sets: "12-10-10", duration: null, desc: "Her bacak 12, 10, 10. Bacak gücü ve denge.", descEn: "Each leg 12, 10, 10. Leg strength and balance.", equip: [] },
-    { level: "beginner", name: "Superman (sırt)", nameEn: "Superman hold", sets: "12-10-10", duration: null, desc: "12, 10, 10. Bel ve sırt zinciri, duruş.", descEn: "12, 10, 10. Lower-back and posterior chain.", equip: [] },
-    { level: "beginner", name: "Bisiklet mekik (oblik)", nameEn: "Bicycle crunches", sets: "20-16-16", duration: null, desc: "20, 16, 16. Yan karın — gövde dönüşü gücü.", descEn: "20, 16, 16. Obliques — rotational core.", equip: [] },
-    // — Yükseliş (10) —
-    { level: "intermediate", name: "Şınav (yüksek tekrar)", nameEn: "Push-ups (high rep)", sets: "30-25-20-15", duration: null, desc: "30, 25, 20, 15. Kas dayanıklılığı.", descEn: "30, 25, 20, 15. Muscular endurance.", equip: [] },
-    { level: "intermediate", name: "Burpee", nameEn: "Burpees", sets: "15-12-10", duration: null, desc: "15, 12, 10. Patlayıcı kalkış, akıcı geçiş.", descEn: "15, 12, 10. Explosive rise, fluid transition.", equip: [] },
-    { level: "intermediate", name: "Barfiks", nameEn: "Pull-ups", sets: "10-8-6", duration: null, desc: "10, 8, 6. Sırt ve çekme gücü.", descEn: "10, 8, 6. Back and pulling strength.", equip: ["pullup"] },
-    { level: "intermediate", name: "Dips", nameEn: "Dips", sets: "15-12-10", duration: null, desc: "15, 12, 10. Triceps ve göğüs — cross'un motoru.", descEn: "15, 12, 10. Triceps and chest.", equip: ["dips"] },
-    { level: "intermediate", name: "Dambıl omuz pres", nameEn: "Dumbbell shoulder press", sets: "15-12-10", duration: null, desc: "15, 12, 10. Guard'ı yukarıda tutma gücü.", descEn: "15, 12, 10. Strength to keep the guard up.", equip: ["dumbbell"] },
-    { level: "intermediate", name: "Plaka shadow press", nameEn: "Plate front press", sets: "20-15-15", duration: null, desc: "20, 15, 15. Plakayı öne it — yumruk taklidi.", descEn: "20, 15, 15. Press plate forward — mimics a punch.", equip: ["plate"] },
-    { level: "intermediate", name: "Bulgar split squat", nameEn: "Bulgarian split squat", sets: "12-10-10", duration: null, desc: "Her bacak 12, 10, 10. Tek bacak güç ve denge.", descEn: "Each leg 12, 10, 10. Single-leg strength.", equip: [] },
-    { level: "intermediate", name: "Mountain climber", nameEn: "Mountain climbers", sets: "4x30 sn", duration: "30 sn", desc: "30 sn hızlı. Core + kondisyon.", descEn: "30 s fast. Core + conditioning.", equip: [] },
-    { level: "intermediate", name: "Russian twist (dambıl)", nameEn: "Russian twist (DB)", sets: "20-16-16", duration: null, desc: "20, 16, 16 (toplam). Dönüş gücü — kroşe motoru.", descEn: "20, 16, 16 total. Rotational power — hook engine.", equip: ["dumbbell"] },
-    { level: "intermediate", name: "Pike şınav (omuz)", nameEn: "Pike push-ups", sets: "12-10-8", duration: null, desc: "12, 10, 8. Omuz gücü, üst yumruk dayanağı.", descEn: "12, 10, 8. Shoulder strength.", equip: [] },
-    { level: "intermediate", name: "Patlayıcı squat (jump squat)", nameEn: "Jump squats", sets: "15-12-10", duration: null, desc: "15, 12, 10. Patlayıcı bacak gücü.", descEn: "15, 12, 10. Explosive leg power.", equip: [] },
-    { level: "intermediate", name: "Diamond şınav (triceps)", nameEn: "Diamond push-ups", sets: "12-10-8", duration: null, desc: "12, 10, 8. Eller elmas — triceps, cross gücü.", descEn: "12, 10, 8. Diamond hands — triceps, cross power.", equip: [] },
-    { level: "intermediate", name: "V-up (karın)", nameEn: "V-ups", sets: "15-12-10", duration: null, desc: "15, 12, 10. Tüm karın zinciri.", descEn: "15, 12, 10. Full ab chain.", equip: [] },
-    { level: "intermediate", name: "Hollow hold (core)", nameEn: "Hollow hold", sets: "3x30 sn", duration: "30 sn", desc: "30 sn. Core stabilite — vuruşta güç aktarımı.", descEn: "30 s. Core stability — power transfer.", equip: [] },
-    { level: "intermediate", name: "Tırmanıcı şınav (spider)", nameEn: "Spider-man push-ups", sets: "12-10-8", duration: null, desc: "12, 10, 8. Diz dirseğe — core + göğüs.", descEn: "12, 10, 8. Knee to elbow — core + chest.", equip: [] },
-    // — Pro (10) — düzeltilmiş gerçekçi azalan setler
-    { level: "pro", name: "Patlayıcı alkışlı şınav (clap)", nameEn: "Explosive clap push-ups", sets: "12-10-8", duration: null, desc: "12, 10, 8. Yerden patlayarak el çırp — yumruk gücü. (60 değil, kaliteli patlayıcı tekrar)", descEn: "12, 10, 8. Explode and clap — quality over quantity.", equip: [] },
-    { level: "pro", name: "30 sn maks şınav sprinti", nameEn: "30s max push-up sprint", sets: "4x30 sn", duration: "30 sn", desc: "30 saniyede temiz, mümkün olan en çok şınav.", descEn: "Max clean push-ups in 30 seconds.", equip: [] },
-    { level: "pro", name: "Dips — yorulana kadar", nameEn: "Dips — to failure", sets: "4 set · MAX", duration: null, desc: "Her set yorulana kadar. Triceps/göğüs eşiği.", descEn: "Each set to failure. Triceps/chest threshold.", equip: ["dips"] },
-    { level: "pro", name: "Barfiks — patlayıcı", nameEn: "Explosive pull-ups", sets: "8-6-6-5", duration: null, desc: "8, 6, 6, 5. Patlayıcı yukarı çekiş.", descEn: "8, 6, 6, 5. Explosive pull.", equip: ["pullup"] },
-    { level: "pro", name: "Barbell deadlift", nameEn: "Barbell deadlift", sets: "5x5", duration: null, desc: "Ağır, az tekrar. Posterior zincir gücü.", descEn: "Heavy, low reps. Posterior chain power.", equip: ["barbell"] },
-    { level: "pro", name: "Plaka patlayıcı punch press", nameEn: "Plate explosive punch press", sets: "20-15-12", duration: null, desc: "20, 15, 12. Plakayı patlayarak öne fırlatır gibi.", descEn: "20, 15, 12. Explosively press forward.", equip: ["plate"] },
-    { level: "pro", name: "Burpee patlaması (40 sn)", nameEn: "Burpee blast (40s)", sets: "4x40 sn", duration: "40 sn", desc: "40 saniye durmadan. Tam vücut anaerobik.", descEn: "Nonstop 40 s. Full-body anaerobic.", equip: [] },
-    { level: "pro", name: "Dambıl clean & press", nameEn: "Dumbbell clean & press", sets: "8-6-6-5", duration: null, desc: "8, 6, 6, 5. Patlayıcı tam vücut güç.", descEn: "8, 6, 6, 5. Explosive full-body power.", equip: ["dumbbell"] },
-    { level: "pro", name: "Muscle-up (patlayıcı)", nameEn: "Explosive muscle-up", sets: "5-4-3", duration: null, desc: "5, 4, 3. Çekiş + itiş tek harekette. Üst beden zirvesi.", descEn: "5, 4, 3. Pull + press in one move.", equip: ["pullup"] },
-    { level: "pro", name: "Plaka slam", nameEn: "Plate slam", sets: "15-12-10", duration: null, desc: "15, 12, 10. Tüm güçle yere indir — knockout patlayıcılığı.", descEn: "15, 12, 10. Slam with full force.", equip: ["plate"] },
-    { level: "pro", name: "Tek kol şınav (arşe)", nameEn: "Archer push-ups", sets: "8-6-6", duration: null, desc: "Her taraf 8, 6, 6. Tek kola yük — maksimum üst beden gücü.", descEn: "Each side 8, 6, 6. Loaded single-arm power.", equip: [] },
-    { level: "pro", name: "Pistol squat (tek bacak)", nameEn: "Pistol squats", sets: "8-6-5", duration: null, desc: "Her bacak 8, 6, 5. Tek bacak güç ve denge zirvesi.", descEn: "Each leg 8, 6, 5. Peak single-leg strength.", equip: [] },
-    { level: "pro", name: "Patlayıcı burpee + sıçrama", nameEn: "Explosive burpee + jump", sets: "12-10-8", duration: null, desc: "12, 10, 8. Tam vücut patlayıcı güç.", descEn: "12, 10, 8. Full-body explosive power.", equip: [] },
-    { level: "pro", name: "Handstand şınav (duvar)", nameEn: "Wall handstand push-ups", sets: "8-6-5", duration: null, desc: "8, 6, 5. Omuz zirve gücü — guard dayanıklılığı.", descEn: "8, 6, 5. Peak shoulder strength.", equip: [] },
-    { level: "pro", name: "Dragon flag (core)", nameEn: "Dragon flag", sets: "8-6-5", duration: null, desc: "8, 6, 5. Elit core gücü — gövde stabilitesi.", descEn: "8, 6, 5. Elite core strength.", equip: [] },
-    { level: "pro", name: "Plyo şınav (sıçramalı)", nameEn: "Plyometric push-ups", sets: "10-8-6", duration: null, desc: "10, 8, 6. Yerden patla — yumruk hızı ve gücü.", descEn: "10, 8, 6. Explode off floor — punch speed.", equip: [] },
-    { level: "pro", name: "Tek bacak köprü patlaması", nameEn: "Single-leg hip thrust", sets: "10-8-8", duration: null, desc: "Her bacak 10, 8, 8. Patlayıcı kalça gücü — vuruş tabanı.", descEn: "Each leg 10, 8, 8. Explosive hip power — punch base.", equip: [] },
+    { level: "beginner", name: "Standart şınav", nameEn: "Standard push-ups", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca temiz formda olabildiğince çok şınav çek; gövdeni baştan topuğa düz bir hat gibi tut.Yapılamıyorsa dizlerden destek alınabilir.", descEn: "Do as many clean-form push-ups as you can the whole time; keep your body a straight line from head to heel. If you can't, you may support from the knees.", equip: [], rest: 60, met: 6.5, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "beginner", name: "Squat (hava)", nameEn: "Air squats", sets: "MAKS", duration: "10 dk", desc: "Süre boyunca maksimum tekrar. Dizin parmak ucunu geçmesin, kalçanı geriye it.", descEn: "Max reps the whole time. Don't let the knee pass the toes, push the hips back.", equip: [], rest: 60, met: 6.5, hedefKas: "Bacak, Kalça" },
+    { level: "beginner", name: "Plank", nameEn: "Plank", sets: "3x40 sn", duration: "40 sn", desc: "Kalçan düşmeden, core'un sıkı şekilde pozisyonu koru. Süre dolana kadar dayan.", descEn: "Hold the position with a tight core without letting the hips drop. Hold until time is up.", equip: [], rest: 30, met: 4.5, hedefKas: "Core (Karın)" },
+    { level: "beginner", name: "Dambıl curl (hafif)", nameEn: "Dumbbell curl (light)", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca kontrollü tekrarlar; kol gücünün temelini at, hızdan çok forma odaklan.", descEn: "Controlled reps the whole time; lay the foundation of arm strength, focus on form over speed.", equip: ["dumbbell"], rest: 55, met: 5, hedefKas: "Kol (Biceps)" },
+    { level: "beginner", name: "Mekik (sit-up)", nameEn: "Sit-ups", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca kontrollü şekilde maksimum tekrar. Karın gücünü inşa et.", descEn: "Max controlled reps the whole time. Build abdominal strength.", equip: [], rest: 60, met: 6.5, hedefKas: "Core (Karın)" },
+    { level: "beginner", name: "Sırt üstü köprü (glute bridge)", nameEn: "Glute bridge", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Kalça ve bel gücünü, dik duruşunu destekler.", descEn: "Max reps the whole time. Supports hip and lower-back strength and upright posture.", equip: [], rest: 60, met: 6.5, hedefKas: "Kalça, Bel" },
+    { level: "beginner", name: "Diz üstü şınav", nameEn: "Knee push-ups", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Tam şınava hazırlık ve üst beden gücü.", descEn: "Max reps the whole time. Preparation for the full push-up and upper-body strength.", equip: [], rest: 60, met: 6.5, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "beginner", name: "Yan plank (her taraf)", nameEn: "Side plank (each side)", sets: "3x25 sn", duration: "25 sn", desc: "Her iki tarafta da pozisyonu koruyarak bekle. Yan core ve denge çalışması.", descEn: "Hold the position on both sides. Side-core and balance work.", equip: [], rest: 25, met: 4.5, hedefKas: "Core (Karın)" },
+    { level: "beginner", name: "Komando dansı (lunge)", nameEn: "Commando dance (lunge)", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca her iki bacağa dönüşümlü maksimum tekrar. Bacak gücü ve denge.", descEn: "Max reps the whole time, alternating both legs. Leg strength and balance.", equip: [], rest: 60, met: 6.5, hedefKas: "Bacak, Kalça" },
+    { level: "beginner", name: "Superman (sırt)", nameEn: "Superman hold", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Bel-sırt zincirini güçlendirir, duruşu düzeltir.", descEn: "Max reps the whole time. Strengthens the lower-back chain and fixes posture.", equip: [], rest: 60, met: 6.5, hedefKas: "Bel, Sırt" },
+    { level: "beginner", name: "Bisiklet mekik (oblik)", nameEn: "Bicycle crunches", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Yan karın ve gövde dönüş gücü — kroşenin motoru.", descEn: "Max reps the whole time. Side-abs and trunk-rotation power — the engine of the hook.", equip: [], rest: 60, met: 6.5, hedefKas: "Core (Karın)" },
+    { level: "intermediate", name: "Şınav (yüksek tekrar)", nameEn: "Push-ups (high rep)", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca yüksek tempoda maksimum şınav. Kas dayanıklılığı.", descEn: "Max push-ups at high tempo the whole time. Muscular endurance.", equip: [], rest: 60, met: 7, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "intermediate", name: "Burpee", nameEn: "Burpees", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca akıcı geçişle maksimum tekrar. Patlayıcı kalkış, tüm vücut.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time with smooth transitions. Explosive rise, full body. Log your reps and race yourself.", equip: [], rest: 60, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "intermediate", name: "Barfiks", nameEn: "Pull-ups", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Sırt ve çekme gücünü geliştirir.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time. Develops back and pulling strength. Log your reps and race yourself.", equip: ["pullup"], rest: 60, met: 7, hedefKas: "Sırt, Kol" },
+    { level: "intermediate", name: "Dips", nameEn: "Dips", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Triceps ve göğüs — cross'un motoru.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time. Triceps and chest — the engine of the cross. Log your reps and race yourself.", equip: ["dips"], rest: 60, met: 7, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "intermediate", name: "Dambıl omuz pres", nameEn: "Dumbbell shoulder press", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Guard'ı yukarıda tutma gücü.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time. The strength to keep your guard up. Log your reps and race yourself.", equip: ["dumbbell"], rest: 60, met: 7, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "intermediate", name: "Plaka shadow press", nameEn: "Plate front press", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca plakayı öne it — yumruğu taklit eden maksimum tekrar.Tekrarı not al kendinle yarış", descEn: "Press the plate forward the whole time — max reps mimicking the punch. Log your reps and race yourself.", equip: ["plate"], rest: 60, met: 7, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "intermediate", name: "Bulgar split squat", nameEn: "Bulgarian split squat", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca her bacağa dönüşümlü maksimum tekrar. Tek bacak güç ve denge.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time, alternating each leg. Single-leg strength and balance. Log your reps and race yourself.", equip: [], rest: 60, met: 7, hedefKas: "Bacak, Kalça" },
+    { level: "intermediate", name: "Mountain climber", nameEn: "Mountain climbers", sets: "4x30 sn", duration: "30 sn", desc: "Süre boyunca hızlı tempoda dizleri göğse çek. Core ve kondisyon.Tekrarı not al kendinle yarış", descEn: "Drive the knees to the chest at fast tempo the whole time. Core and conditioning. Log your reps and race yourself.", equip: [], rest: 30, met: 7, hedefKas: "Core (Karın)" },
+    { level: "intermediate", name: "Russian twist (dambıl)", nameEn: "Russian twist (DB)", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca gövdeni iki yana döndür. Dönüş gücü — kroşenin kaynağı.Tekrarı not al kendinle yarış", descEn: "Rotate your trunk side to side the whole time. Rotational power — the source of the hook. Log your reps and race yourself.", equip: ["dumbbell"], rest: 60, met: 7, hedefKas: "Yan Karın (Oblik)" },
+    { level: "intermediate", name: "Pike şınav (omuz)", nameEn: "Pike push-ups", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Omuz gücü ve üst yumruk dayanağı.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time. Shoulder strength and upper-punch support. Log your reps and race yourself.", equip: [], rest: 60, met: 7, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "intermediate", name: "Patlayıcı squat (jump squat)", nameEn: "Jump squats", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca patlayıcı sıçramalarla maksimum tekrar. Bacak patlayıcılığı.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time with explosive jumps. Leg explosiveness. Log your reps and race yourself.", equip: [], rest: 60, met: 9.5, hedefKas: "Bacak, Kalça" },
+    { level: "intermediate", name: "Diamond şınav (triceps)", nameEn: "Diamond push-ups", sets: "MAKS", duration: "7 dk", desc: "Eller elmas şeklinde; süre boyunca maksimum tekrar. Triceps ve cross gücü.Tekrarı not al kendinle yarış", descEn: "Hands in a diamond shape; max reps the whole time. Triceps and cross power. Log your reps and race yourself.", equip: [], rest: 60, met: 7, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "intermediate", name: "V-up (karın)", nameEn: "V-ups", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca maksimum tekrar. Tüm karın zincirini çalıştırır.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time. Works the entire abdominal chain. Log your reps and race yourself.", equip: [], rest: 60, met: 7, hedefKas: "Core (Karın)" },
+    { level: "intermediate", name: "Hollow hold (core)", nameEn: "Hollow hold", sets: "3x30 sn", duration: "30 sn", desc: "Core'u kasarak hollow pozisyonunu koru. Vuruşta güç aktarımının temeli.", descEn: "Hold the hollow position with a tight core. The foundation of power transfer in the punch.", equip: [], rest: 30, met: 4.5, hedefKas: "Core (Karın)" },
+    { level: "intermediate", name: "Tırmanıcı şınav (spider)", nameEn: "Spider-man push-ups", sets: "MAKS", duration: "7 dk", desc: "Süre boyunca dizini dirseğine çekerek maksimum tekrar. Core ve göğüs.Tekrarı not al kendinle yarış", descEn: "Max reps the whole time, drawing the knee to the elbow. Core and chest. Log your reps and race yourself.", equip: [], rest: 60, met: 7, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Patlayıcı alkışlı şınav (clap)", nameEn: "Explosive clap push-ups", sets: "MAKS", duration: "7dk", desc: "Süre boyunca yerden patlayıp el çırparak maksimum kaliteli tekrar. Sayıya değil patlayıcılığa odaklan.Tekrarı not al kendinle yarış", descEn: "Max quality reps the whole time, exploding off the ground and clapping. Focus on explosiveness, not the count. Log your reps and race yourself.", equip: [], rest: 60, met: 10, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "30 sn maks şınav sprinti", nameEn: "30s max push-up sprint", sets: "4x30 sn", duration: "30 sn", desc: "Süre boyunca temiz formda mümkün olan en çok şınavı çek. Kısa ve maksimum efor.", descEn: "Do as many clean-form push-ups as possible the whole time. Short, maximum effort.", equip: [], rest: 10, met: 10, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Dips — yorulana kadar", nameEn: "Dips — to failure", sets: "MAKS", duration: "5 dk", desc: "Süre boyunca yorulana dek devam et. Triceps ve göğüs eşiğini zorlar.", descEn: "Continue until exhaustion the whole time. Pushes the triceps and chest threshold.", equip: ["dips"], rest: 60, met: 7.5, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Barfiks — patlayıcı", nameEn: "Explosive pull-ups", sets: "MAKS", duration: "5 dk", desc: "Süre boyunca patlayıcı şekilde yukarı çekil. Çekme gücü ve patlayıcılık.", descEn: "Pull up explosively the whole time. Pulling power and explosiveness.", equip: ["pullup"], rest: 60, met: 10, hedefKas: "Sırt, Kol" },
+    { level: "pro", name: "Barbell deadlift", nameEn: "Barbell deadlift", sets: "MAKS", duration: "5 dk", desc: "Ağır yükle, az ve kontrollü tekrar. Posterior zincir (sırt-kalça-bacak) gücü.", descEn: "Heavy load, few controlled reps. Posterior-chain (back-hip-leg) strength.", equip: ["barbell"], rest: 60, met: 7.5, hedefKas: "Sırt, Kol" },
+    { level: "pro", name: "Plaka patlayıcı punch press", nameEn: "Plate explosive punch press", sets: "MAKS", duration: "5 dk", desc: "Plakayı öne fırlatır gibi patlayıcı şekilde it. Süre boyunca maksimum tekrar.", descEn: "Press the plate explosively as if throwing it forward. Max reps the whole time.", equip: ["plate"], rest: 60, met: 10, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Burpee patlaması (40 sn)", nameEn: "Burpee blast (40s)", sets: "4x1 dk", duration: "1 dk", desc: "Süre boyunca durmadan burpee. Tüm vücut anaerobik patlaması.", descEn: "Nonstop burpees the whole time. Full-body anaerobic blast.", equip: [], rest: 30, met: 10, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Dambıl clean & press", nameEn: "Dumbbell clean & press", sets: "MAKS", duration: "5 dk", desc: "Süre boyunca patlayıcı şekilde yerden omuza, omuzdan yukarı. Tüm vücut güç.", descEn: "Explosively from floor to shoulder to overhead the whole time. Full-body power.", equip: ["dumbbell"], rest: 60, met: 7.5, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Muscle-up (patlayıcı)", nameEn: "Explosive muscle-up", sets: "MAKS", duration: "5 dk", desc: "Çekiş ve itişi tek harekette birleştir. Üst beden gücünün zirvesi.", descEn: "Combine pull and push in one move. The peak of upper-body strength.", equip: ["pullup"], rest: 60, met: 10, hedefKas: "Sırt, Kol" },
+    { level: "pro", name: "Plaka slam", nameEn: "Plate slam", sets: "MAKS", duration: "5 dk", desc: "Plakayı tüm gücünle yere indir. Nakavt patlayıcılığı geliştirir.", descEn: "Drive the plate into the ground with all your power. Develops knockout explosiveness.", equip: ["plate"], rest: 60, met: 7.5, hedefKas: "Core, Sırt, Kalça" },
+    { level: "pro", name: "Tek kol şınav (arşe)", nameEn: "Archer push-ups", sets: "MAKS", duration: "5 dk", desc: "Tek kola yük binecek şekilde süre boyunca tekrar. Maksimum üst beden gücü.", descEn: "Reps the whole time with the load on one arm. Maximum upper-body strength.", equip: [], rest: 60, met: 7.5, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Pistol squat (tek bacak)", nameEn: "Pistol squats", sets: "MAKS", duration: "5 dk", desc: "Tek bacak üstünde kontrollü çök ve kalk. Bacak gücü ve dengenin zirvesi.", descEn: "Lower and rise under control on one leg. The peak of leg strength and balance.", equip: [], rest: 60, met: 7.5, hedefKas: "Bacak, Kalça" },
+    { level: "pro", name: "Patlayıcı burpee + sıçrama", nameEn: "Explosive burpee + jump", sets: "MAKS", duration: "5 dk", desc: "Süre boyunca patlayıcı burpee ve sıçrama. Tüm vücut patlayıcı güç.", descEn: "Explosive burpees and jumps the whole time. Full-body explosive power.", equip: [], rest: 60, met: 10, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Handstand şınav (duvar)", nameEn: "Wall handstand push-ups", sets: "MAKS", duration: "5 dk", desc: "Duvara yaslı amuda kalkıp süre boyunca maksimum tekrar. Omuz gücü zirvesi.", descEn: "Kick up to a wall handstand and do max reps the whole time. Peak shoulder strength.", equip: [], rest: 60, met: 7.5, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Squat+Şınav kombosu", nameEn: "Squat + push-up combo", sets: "MAKS", duration: "10 dk", desc: "Süre bitene kadar 20squat +20 şınav 1 set olacak sekilde dinlenmeden yap", descEn: "Until time is up, do 20 squats + 20 push-ups as one set, without resting.", equip: [], rest: 60, met: 7.5, hedefKas: "Core (Karın)" },
+    { level: "pro", name: "Plyo şınav (sıçramalı)", nameEn: "Plyometric push-ups", sets: "MAKS", duration: "5 dk", desc: "Süre boyunca yerden patlayarak maksimum tekrar. Yumruk hızı ve gücü.", descEn: "Max reps the whole time, exploding off the ground. Punch speed and power.", equip: [], rest: 60, met: 10, hedefKas: "Göğüs, Triceps, Omuz" },
+    { level: "pro", name: "Tek bacak köprü patlaması", nameEn: "Single-leg hip thrust", sets: "MAKS", duration: "5 dk", desc: "Her bacağa dönüşümlü patlayıcı köprü. Vuruşun tabanı olan kalça gücü.", descEn: "Explosive bridge alternating each leg. Hip strength, the base of the punch.", equip: [], rest: 60, met: 10, hedefKas: "Kalça, Bel" },
   ],
   defense: [
-    { level: "beginner", name: "Guard pozisyonu pratiği", nameEn: "Guard position drill", sets: "3x2 dk", duration: "2 dk", desc: "Eller çene hizasında, dirsekler içeride.", descEn: "Hands at chin, elbows in.", equip: [] },
-    { level: "beginner", name: "Temel blok (kol bloğu)", nameEn: "Basic block", sets: "4x2 dk", duration: "2 dk", desc: "Hayali vuruşu kolla karşıla.", descEn: "Block the imaginary punch with the arm.", equip: [] },
-    { level: "beginner", name: "Geri çekilme (lean back)", nameEn: "Lean back", sets: "3x2 dk", duration: "2 dk", desc: "Beli geriye yatır, vuruşu menzil dışında bırak.", descEn: "Lean back, leave the punch short.", equip: [] },
-    { level: "beginner", name: "Parry (eldivenle saptırma)", nameEn: "Parry", sets: "3x2 dk", duration: "2 dk", desc: "Gelen jab'i eldivenle yana saptır.", descEn: "Deflect the incoming jab with the glove.", equip: [] },
-    { level: "beginner", name: "Temel slip (sağ-sol)", nameEn: "Basic slip (R-L)", sets: "4x2 dk", duration: "2 dk", desc: "Bel ve dizden hafif kay, üst beden dik kalsın.", descEn: "Slip slightly from waist and knees, keep torso upright.", equip: [] },
-    { level: "intermediate", name: "Slip + kontra (sağ-sol)", nameEn: "Slip + counter (R-L)", sets: "5x3 dk", duration: "3 dk", desc: "Kaçışın ardından anında vuruş.", descEn: "Punch immediately after the slip.", equip: [] },
-    { level: "intermediate", name: "Eğil + kontra kroşe (duck)", nameEn: "Duck + counter hook", sets: "4x2 dk", duration: "2 dk", desc: "Vuruşun altına eğil, çıkışta kroşe at.", descEn: "Duck under the punch, hook on the way up.", equip: [] },
-    { level: "intermediate", name: "Catch + cross (yakala-vur)", nameEn: "Catch + cross", sets: "4x3 dk", duration: "3 dk", desc: "Jab'i yakala, aynı anda cross gönder.", descEn: "Catch the jab, send a cross at the same time.", equip: [] },
-    { level: "intermediate", name: "Roll under (kavis)", nameEn: "Roll under (weave)", sets: "4x2 dk", duration: "2 dk", desc: "Hook'un altından geniş kavisle geç.", descEn: "Weave under the hook in a wide arc.", equip: [] },
-    { level: "intermediate", name: "Blok-parry-kontra zinciri", nameEn: "Block-parry-counter chain", sets: "4x3 dk", duration: "3 dk", desc: "Üç aşamalı tepki zinciri.", descEn: "Three-stage reaction chain.", equip: [] },
-    { level: "pro", name: "Philly shell omuz roll", nameEn: "Philly shell shoulder roll", sets: "4x3 dk", duration: "3 dk", desc: "Omuzla sek, arka elle anında kontra.", descEn: "Deflect with shoulder, counter instantly.", equip: [] },
-    { level: "pro", name: "Çoklu slip-roll zinciri", nameEn: "Multi slip-roll chain", sets: "6x3 dk", duration: "3 dk", desc: "Art arda kaçınma, sıfır hata.", descEn: "Back-to-back evasions, zero error.", equip: [] },
-    { level: "pro", name: "Refleks tepki drili", nameEn: "Reflex reaction drill", sets: "4x1 dk", duration: "1 dk", desc: "Ani sinyale anında slip/blok.", descEn: "Instant slip/block on a cue.", equip: [] },
-    { level: "pro", name: "Köşe savunması + çıkış", nameEn: "Corner defense + escape", sets: "3x2 dk", duration: "2 dk", desc: "Baskı altında soğukkanlı çıkış.", descEn: "Calm escape under pressure.", equip: [] },
-    { level: "pro", name: "Mayweather pull kontra", nameEn: "Mayweather pull-counter", sets: "5x3 dk", duration: "3 dk", desc: "Geriye yaslanarak vuruşu kaçır, anında düz kontra.", descEn: "Lean back to make them miss, instant straight counter.", equip: [] },
-    { level: "pro", name: "Catch & shoot (yakala-fırlat)", nameEn: "Catch & shoot", sets: "4x3 dk", duration: "3 dk", desc: "Jab'i eldivenle yakala, aynı anda cross fırlat.", descEn: "Catch the jab with the glove, fire a cross at the same time.", equip: [] },
-    { level: "pro", name: "Çift kavis (double weave)", nameEn: "Double weave", sets: "4x2 dk", duration: "2 dk", desc: "İki ardışık kavisle kombinasyonun altından geç, çık ve vur.", descEn: "Weave under a combo twice, come up and strike.", equip: [] },
-    { level: "pro", name: "Sırt-ipte savunma (ropes defense)", nameEn: "On-the-ropes defense", sets: "3x2 dk", duration: "2 dk", desc: "İplerde blok+roll ile hayatta kal, sonra patla. Ali rope-a-dope.", descEn: "Survive on the ropes with block+roll, then explode. Ali rope-a-dope.", equip: [] },
-    { level: "pro", name: "Görsel reaksiyon + kontra (yorgun)", nameEn: "Visual reaction counter (fatigued)", sets: "3x3 dk", duration: "3 dk", desc: "Yorgunken bile ani savunma+kontra. Son round refleksi.", descEn: "Defense+counter even when exhausted. Final-round reflex.", equip: [] },
-    { level: "pro", name: "Kompakt high-guard baskı savunması", nameEn: "Compact high-guard under pressure", sets: "4x3 dk", duration: "3 dk", desc: "Yoğun baskıda guard'ı sıkı tut, aralardan kontra çıkar.", descEn: "Hold a tight guard under heavy pressure, counter through the gaps.", equip: [] },
+    { level: "beginner", name: "Guard pozisyonu pratiği", nameEn: "Guard position drill", sets: "3x2 dk", duration: "2 dk", desc: "Eller çene hizasında, dirsekler içeride. Savunmanın temel duruşu.", descEn: "Hands at chin level, elbows inside. The base defensive stance.", equip: [], rest: 45, met: 4, hedefKas: "Core, Bacak (denge)" },
+    { level: "beginner", name: "Temel blok (kol bloğu)", nameEn: "Basic block", sets: "3x2 dk", duration: "2 dk", desc: "Gelen hayali vuruşu kolunla karşıla ve emici şekilde blokla.", descEn: "Meet the incoming imaginary punch with your arm and block absorptively.", equip: [], rest: 45, met: 4, hedefKas: "Core, Bacak (denge)" },
+    { level: "beginner", name: "Geri çekilme (lean back)", nameEn: "Lean back", sets: "3x2 dk", duration: "2 dk", desc: "Beli geriye yatırarak vuruşu menzil dışında bırak.", descEn: "Lean the torso back to leave the punch out of range.", equip: [], rest: 45, met: 4, hedefKas: "Core, Bacak (denge)" },
+    { level: "beginner", name: "Parry (eldivenle saptırma)", nameEn: "Parry", sets: "3x2 dk", duration: "2 dk", desc: "Gelen jab'i eldiveninle hafifçe yana saptır.", descEn: "Deflect the incoming jab slightly aside with your glove.", equip: [], rest: 45, met: 4, hedefKas: "Core, Bacak (denge)" },
+    { level: "beginner", name: "Temel slip (sağ-sol)", nameEn: "Basic slip (R-L)", sets: "3x2 dk", duration: "2 dk", desc: "Bel ve dizden hafifçe kay, üst bedeni dik tutarak vuruştan sıyrıl.", descEn: "Slip slightly from the waist and knees, keeping the upper body upright as you escape the punch.", equip: [], rest: 45, met: 4, hedefKas: "Core, Bacak (denge)" },
+    { level: "intermediate", name: "Slip + kontra (sağ-sol)", nameEn: "Slip + counter (R-L)", sets: "3x3 dk", duration: "3 dk", desc: "Vuruştan slip ile sıyrıl, hemen ardından kontra at.", descEn: "Escape the punch with a slip, then counter immediately.", equip: [], rest: 60, met: 10, hedefKas: "Core, Bacak (denge)" },
+    { level: "intermediate", name: "Eğil + kontra kroşe (duck)", nameEn: "Duck + counter hook", sets: "3x3 dk", duration: "3 dk", desc: "Vuruşun altına eğil, çıkarken kroşe ile cevap ver.", descEn: "Duck under the punch and answer with a hook on the way up.", equip: [], rest: 45, met: 5.5, hedefKas: "Core, Bacak (denge)" },
+    { level: "intermediate", name: "Catch + cross (yakala-vur)", nameEn: "Catch + cross", sets: "3x3 dk", duration: "3 dk", desc: "Jab'i eldivenle yakala, aynı anda cross gönder.", descEn: "Catch the jab with the glove and send a cross at the same time.", equip: [], rest: 60, met: 5.5, hedefKas: "Core, Bacak (denge)" },
+    { level: "intermediate", name: "Roll under (kavis)", nameEn: "Roll under (weave)", sets: "3x3 dk", duration: "3 dk", desc: "Kroşenin altından geniş bir kavis çizerek geç.", descEn: "Pass under the hook tracing a wide weave.", equip: [], rest: 45, met: 5.5, hedefKas: "Core, Bacak (denge)" },
+    { level: "intermediate", name: "Blok-parry-kontra zinciri", nameEn: "Block-parry-counter chain", sets: "3x3 dk", duration: "3 dk", desc: "Blokla, saptır, kontra at — üç aşamalı tepki zinciri.", descEn: "Block, deflect, counter — a three-stage reaction chain.", equip: [], rest: 60, met: 4, hedefKas: "Core, Bacak (denge)" },
+    { level: "pro", name: "Philly shell omuz roll", nameEn: "Philly shell shoulder roll", sets: "3x3 dk", duration: "3 dk", desc: "Philly shell guardında kal, omuz roll ile blokla ve hayali yumruklardan sıyrıl.", descEn: "Stay in the Philly shell guard, block with the shoulder roll and escape imaginary punches.", equip: [], rest: 45, met: 6, hedefKas: "Core, Bacak (denge)" },
+    { level: "pro", name: "Çoklu slip-roll zinciri", nameEn: "Multi slip-roll chain", sets: "3x3 dk", duration: "3 dk", desc: "Durmadan sağa-sola slip ve roll yaparak savunmada akıcılık kur.", descEn: "Slip and roll side to side nonstop to build defensive fluidity.", equip: [], rest: 30, met: 6, hedefKas: "Core, Bacak (denge)" },
+    { level: "pro", name: "Refleks tepki drili", nameEn: "Reflex reaction drill", sets: "3x3 dk", duration: "3 dk", desc: "⚠️ Sesli antrenörü aç! Sinyale göre yumruktan kaçıp kontra at. Antrenör 'boks' dedikçe tepki ver.", descEn: "⚠️ Turn on the voice coach! React to the signal by dodging the punch and countering. React each time the coach says 'box'.", equip: [], rest: 60, met: 6, hedefKas: "Core, Bacak (denge)", reflexCue: true },
+    { level: "pro", name: "Köşe savunması + çıkış", nameEn: "Corner defense + escape", sets: "3x3 dk", duration: "3 dk", desc: "Köşede baskı altında soğukkanlılıkla savun ve güvenle çık.Side Step hook hayal gücüne kalmıs.", descEn: "Defend calmly under pressure in the corner and exit safely. Side-step hook is up to your imagination.", equip: [], rest: 30, met: 6, hedefKas: "Core, Bacak (denge)" },
+    { level: "pro", name: "Catch & shoot (yakala-fırlat)", nameEn: "Catch & shoot", sets: "3x3 dk", duration: "3 dk", desc: "Jab'i eldivenle yakala, aynı anda cross fırlat.", descEn: "Catch the jab with the glove and fire a cross at the same time.", equip: [], rest: 30, met: 6, hedefKas: "Core, Bacak (denge)" },
+    { level: "pro", name: "Çift kavis (double weave)", nameEn: "Double weave", sets: "3x3 dk", duration: "3 dk", desc: "İki ardışık kavisle kombinasyonun altından geç, çık ve vur.", descEn: "Pass under the combination with two successive weaves, exit and strike.", equip: [], rest: 45, met: 6, hedefKas: "Core, Bacak (denge)" },
+    { level: "pro", name: "Sırt-ipte savunma (ropes defense)", nameEn: "On-the-ropes defense", sets: "3x3 dk", duration: "3 dk", desc: "İplere yaslanıp blok ve roll ile hayatta kal, sonra patla. Ali'nin rope-a-dope taktiği.", descEn: "Lean on the ropes, survive with blocks and rolls, then explode. Ali's rope-a-dope tactic.", equip: [], rest: 45, met: 6, hedefKas: "Core, Bacak (denge)" },
+    { level: "pro", name: "Kompakt high-guard baskı savunması", nameEn: "Compact high-guard under pressure", sets: "3x3 dk", duration: "3 dk", desc: "Yoğun baskı altında guard'ı sıkı tut, aralardan kontra çıkar.", descEn: "Keep a tight guard under heavy pressure and counter through the gaps.", equip: [], rest: 60, met: 4.5, hedefKas: "Core, Bacak (denge)" },
   ],
   cardio: [
-    { level: "beginner", name: "Tempolu yürüyüş/hafif koşu", nameEn: "Brisk walk / light jog", sets: null, duration: "15 dk", desc: "Sohbet edebilecek tempo.", descEn: "Conversational pace.", equip: [] },
-    { level: "beginner", name: "Atlama ipi (hafif)", nameEn: "Jump rope (light)", sets: "4x2 dk", duration: "2 dk", desc: "Sabit, yavaş tempo.", descEn: "Steady, slow tempo.", equip: ["rope"] },
-    { level: "beginner", name: "Yerinde yüksek diz", nameEn: "High knees in place", sets: "4x1 dk", duration: "1 dk", desc: "Orta tempo, nabız yükseltme.", descEn: "Moderate tempo, raise heart rate.", equip: [] },
-    { level: "beginner", name: "Jumping jack", nameEn: "Jumping jacks", sets: "4x1 dk", duration: "1 dk", desc: "Tüm vücut ısınma ve hafif kardiyo.", descEn: "Full-body warm-up and light cardio.", equip: [] },
-    { level: "beginner", name: "Mekik koşusu (shuttle yürüyüş)", nameEn: "Shuttle walk", sets: "4x1 dk", duration: "1 dk", desc: "İleri-geri tempo, hafif kondisyon.", descEn: "Back-and-forth tempo, light conditioning.", equip: [] },
-    { level: "intermediate", name: "Interval koşu", nameEn: "Interval run", sets: "8x", duration: "1 dk", rest: 60, desc: "1 dk hızlı, 1 dk yavaş.", descEn: "1 min fast, 1 min slow.", equip: [] },
-    { level: "intermediate", name: "Mountain climber interval", nameEn: "Mountain climber interval", sets: "5x", duration: "40 sn", rest: 20, desc: "40 sn hızlı tempo, core + kardiyo.", descEn: "40 s fast tempo, core + cardio.", equip: [] },
-    { level: "intermediate", name: "İp + jumping jack süper set", nameEn: "Rope + jacks superset", sets: "5x2 dk", duration: "2 dk", desc: "1 dk ip, 1 dk jumping jack, dinlenmesiz.", descEn: "1 min rope, 1 min jacks, no rest.", equip: ["rope"] },
-    { level: "intermediate", name: "Burpee interval", nameEn: "Burpee interval", sets: "5x", duration: "30 sn", rest: 30, desc: "30 sn maksimum, 30 sn dinlenme.", descEn: "30 s max, 30 s rest.", equip: [] },
-    { level: "intermediate", name: "Atlama ipi uzun set", nameEn: "Long rope set", sets: "4x3 dk", duration: "3 dk", desc: "Minimum dinlenme.", descEn: "Minimal rest.", equip: ["rope"] },
-    { level: "pro", name: "Sprint piramidi", nameEn: "Sprint pyramid", sets: "1 set", duration: "8 dk", desc: "15-30-45-60-45-30-15 sn maksimum sprint.", descEn: "15-30-45-60-45-30-15 s max sprints.", equip: [] },
-    { level: "pro", name: "Tabata protokolü", nameEn: "Tabata protocol", sets: "8x", duration: "20 sn", rest: 10, desc: "20 sn maksimum, 10 sn dinlenme.", descEn: "20 s max, 10 s rest.", equip: [] },
-    { level: "pro", name: "12 round koşu+ip simülasyonu", nameEn: "12-round run+rope sim", sets: "12x", duration: "2 dk", desc: "Her round farklı tempo, müsabaka günü.", descEn: "Each round different tempo, fight day.", equip: [] },
-    { level: "pro", name: "Gölge kondisyon (durmadan)", nameEn: "Shadow conditioning (nonstop)", sets: "5x3 dk", duration: "3 dk", desc: "Nabzı tavanda tut.", descEn: "Keep heart rate maxed.", equip: [] },
-    { level: "pro", name: "Tepe sprintleri (hill sprints)", nameEn: "Hill sprints", sets: "10x", duration: "30 sn", desc: "Maksimum eğim sprinti, bacak gücü + dayanıklılık.", descEn: "Max-incline sprints, leg power + endurance.", equip: [] },
-    { level: "pro", name: "Burpee + sprint kombo", nameEn: "Burpee + sprint combo", sets: "6x", duration: "1 dk", desc: "10 burpee + 30 sn sprint × tekrar. Brutal anaerobik.", descEn: "10 burpees + 30 s sprint x repeat. Brutal anaerobic.", equip: [] },
-    { level: "pro", name: "İp + gölge süper set", nameEn: "Rope + shadow superset", sets: "6x2 dk", duration: "2 dk", desc: "1 dk ip, 1 dk gölge - dinlenmesiz geçiş.", descEn: "1 min rope, 1 min shadow - no rest transition.", equip: ["rope"] },
-    { level: "pro", name: "Kettlebell/dambıl swing kondisyon", nameEn: "Dumbbell swing conditioning", sets: "5x20", duration: null, desc: "Patlayıcı kalça hareketi, kardiyovasküler + güç.", descEn: "Explosive hip drive, cardio + power.", equip: ["dumbbell"] },
-    { level: "pro", name: "Yorgunlukta tempo koruma", nameEn: "Pace hold under fatigue", sets: "4x3 dk", duration: "3 dk", desc: "Son raundda tempoyu düşürmeden sürdür.", descEn: "Hold pace without dropping in the final round.", equip: [] },
-    { level: "pro", name: "Çift HIIT bloğu (zirve kapasite)", nameEn: "Double HIIT block", sets: "2 set", duration: "8 dk", desc: "İki ardışık tabata bloğu, dinlenme minimumda. VO2 max zirvesi.", descEn: "Two back-to-back tabata blocks, minimal rest. VO2 max peak.", equip: [] },
+    { level: "beginner", name: "Tempolu yürüyüş/hafif koşu", nameEn: "Brisk walk / light jog", sets: null, duration: "10 dk", desc: "Sohbet edebileceğin tempoda yürü ya da hafifçe koş. Temel kardiyo ve ısınma.", descEn: "Walk or jog lightly at a pace where you can still talk. Basic cardio and warm-up.", equip: [], rest: 55, met: 4.5, hedefKas: "Bacak, Kalp-Damar" },
+    { level: "beginner", name: "Atlama ipi (hafif)", nameEn: "Jump rope (light)", sets: "3x2 dk", duration: "2 dk", desc: "Sabit ve yavaş tempoda ip atla. Hafif kardiyo ve koordinasyon.", descEn: "Jump rope at a steady, slow tempo. Light cardio and coordination.", equip: ["rope"], rest: 40, met: 10, hedefKas: "Baldır, Kalp-Damar" },
+    { level: "beginner", name: "Yerinde yüksek diz", nameEn: "High knees in place", sets: "3x1 dk", duration: "1 dk", desc: "Orta tempoda dizlerini yukarı çek; nabzını yükselt.", descEn: "Drive the knees up at moderate tempo; raise your heart rate.", equip: [], rest: 40, met: 8.5, hedefKas: "Tüm Vücut, Kalp-Damar" },
+    { level: "beginner", name: "Jumping jack", nameEn: "Jumping jacks", sets: "3x1 dk", duration: "1 dk", desc: "Tüm vücudu çalıştıran ısınma ve hafif kardiyo hareketi.", descEn: "A warm-up and light cardio move that works the whole body.", equip: [], rest: 40, met: 8.5, hedefKas: "Tüm Vücut, Kalp-Damar" },
+    { level: "beginner", name: "Mekik koşusu (shuttle yürüyüş)", nameEn: "Shuttle walk", sets: "3x1 dk", duration: "1 dk", desc: "İleri-geri tempolu git-gel. Hafif kondisyon çalışması.", descEn: "Back-and-forth shuttle at a brisk pace. Light conditioning work.", equip: [], rest: 40, met: 4.5, hedefKas: "Bacak, Kalp-Damar" },
+    { level: "intermediate", name: "Interval koşu", nameEn: "Interval run", sets: "8x", duration: "1 dk", desc: "1 dakika hızlı, 1 dakika yavaş şeklinde dönüşümlü koş.", descEn: "Run alternating 1 minute fast, 1 minute slow.", equip: [], rest: 60, met: 11.5, hedefKas: "Bacak, Kalp-Damar" },
+    { level: "intermediate", name: "Mountain climber interval", nameEn: "Mountain climber interval", sets: "5x", duration: "40 sn", desc: "40 saniye hızlı tempoda dizleri çek. Core ve kardiyo bir arada.", descEn: "Drive the knees at fast tempo for 40 seconds. Core and cardio together.", equip: [], rest: 20, met: 11.5, hedefKas: "Core, Bacak" },
+    { level: "intermediate", name: "İp + jumping jack süper set", nameEn: "Rope + jacks superset", sets: "5x2 dk", duration: "2 dk", desc: "1 dakika ip, 1 dakika jumping jack şeklinde süper set. Yüksek tempo kardiyo.", descEn: "1 minute rope, 1 minute jumping jacks as a superset. High-tempo cardio.", equip: ["rope"], rest: 15, met: 11.5, hedefKas: "Tüm Vücut, Kalp-Damar" },
+    { level: "intermediate", name: "Burpee interval", nameEn: "Burpee interval", sets: "5x", duration: "30 sn", desc: "30 saniye maksimum tempo, 30 saniye dinlenme.", descEn: "30 seconds max tempo, 30 seconds rest.", equip: [], rest: 30, met: 11.5, hedefKas: "Tüm Vücut" },
+    { level: "intermediate", name: "Atlama ipi uzun set", nameEn: "Long rope set", sets: "1x10 dk", duration: "10 dk", desc: "Uzun süre, minimum dinlenmeyle ip atla her 1dk süre geçdiğinde 30 saniye hızlanılmalı. Dayanıklılık çalışması.", descEn: "Jump rope for a long time with minimal rest; every 1 minute, speed up for 30 seconds. Endurance work.", equip: ["rope"], rest: 60, met: 10, hedefKas: "Baldır, Kalp-Damar" },
+    { level: "pro", name: "Sprint piramidi", nameEn: "Sprint pyramid", sets: "1 set", duration: "8 dk", desc: "15-30-45-60-45-30-15 saniyelik maksimum sprintlerle piramit kur.15 saniye depar 15 saniye normal tempo,30 saniye depar 30 saniye normal tempo…", descEn: "Build a pyramid of max sprints of 15-30-45-60-45-30-15 seconds. 15s sprint / 15s normal pace, 30s sprint / 30s normal pace, and so on.", equip: [], rest: 60, met: 12, hedefKas: "Bacak, Kalp-Damar" },
+    { level: "pro", name: "Tabata protokolü(Burpee,Jump Squat,Yumruklu şınav)", nameEn: "Tabata protocol (burpee, jump squat, punch push-up)", sets: "9x", duration: "30 sn", desc: "30 saniye maksimum efor, 15 saniye dinlenme döngüsü.Bu 3 hareket sırayla yapılmalı yumruklu şınavdan sonra tekrar burpee geçilmeli.", descEn: "20s max effort, 10s rest cycle. These 3 moves are done in order — after the punch push-up, go back to the burpee.", equip: [], rest: 15, met: 12, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "12 round ip simülasyonu", nameEn: "12-round rope simulation", sets: "12x", duration: "3dk", desc: "30 saniye hızlı 30 saniye normal tempo atlanılmalı", descEn: "Jump alternating 30 seconds fast, 30 seconds normal tempo.", equip: [], rest: 60, met: 9.5, hedefKas: "Bacak, Kalp-Damar" },
+    { level: "pro", name: "Gölge kondisyon(burpee ile)", nameEn: "Shadow conditioning (with burpees)", sets: "3x3 dk", duration: "3 dk", desc: "Nabzını tavanda olmalı 10 burpee sonrası seri gölge boksu yap hiç durmadan.", descEn: "Heart rate at the ceiling: after 10 burpees, do rapid shadow boxing nonstop.", equip: [], rest: 60, met: 12, hedefKas: "Tüm Vücut, Kalp-Damar" },
+    { level: "pro", name: "Tepe sprintleri (hill sprints)", nameEn: "Hill sprints", sets: "10x", duration: "30 sn", desc: "Maksimum eğimde sprint at. Bacak gücü ve dayanıklılık bir arada.Durmak yok dinlenme yürüyerek olmalı.,", descEn: "Sprint up max incline. Leg strength and endurance combined. No stopping — rest by walking.", equip: [], rest: 40, met: 12, hedefKas: "Bacak, Kalp-Damar" },
+    { level: "pro", name: "Burpee + sprint kombo", nameEn: "Burpee + sprint combo", sets: "6x", duration: "1 dk", desc: "10 burpee + 30 saniye sprint döngüsünü tekrarla. Brutal anaerobik.", descEn: "Repeat the cycle of 10 burpees + 30 seconds sprint. Brutal anaerobic.", equip: [], rest: 30, met: 12, hedefKas: "Bacak, Kalp-Damar" },
+    { level: "pro", name: "İp + gölge süper set", nameEn: "Rope + shadow superset", sets: "6x2 dk", duration: "2 dk", desc: "1 dakika ip, 1 dakika gölge şeklinde süper set. Yüksek tempo kardiyo.", descEn: "1 minute rope, 1 minute shadow as a superset. High-tempo cardio.", equip: ["rope"], rest: 15, met: 12, hedefKas: "Tüm Vücut, Kalp-Damar" },
+    { level: "pro", name: "Kettlebell/dambıl swing kondisyon", nameEn: "Dumbbell swing conditioning", sets: "5x20", duration: null, desc: "Patlayıcı kalça hareketiyle salla. Kardiyovasküler dayanıklılık ve güç.", descEn: "Swing with an explosive hip drive. Cardiovascular endurance and power.", equip: ["dumbbell"], rest: 60, met: 12, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "High Knees (Diz Çekme)", nameEn: "High knees", sets: "4x3 dk", duration: "3 dk", desc: ": Olduğunuz yerde koşar gibi dizlerinizi seri ve yüksek bir şekilde göğüs hizanıza kadar çekin. (Hız ve dayanıklılık)", descEn: "Running in place, drive your knees up to chest level rapidly and high. (Speed and endurance.)", equip: [], rest: 60, met: 9.5, hedefKas: "Tüm Vücut, Kalp-Damar" },
+    { level: "pro", name: "Çift HIIT bloğu (zirve kapasite)", nameEn: "Double HIIT block", sets: "2 set", duration: "8 dk", desc: "İki ardışık tabata bloğu, minimum dinlenme. VO2 max zirvesi.10 burpee arkasına 10 tekrar 1-2-3 kombinasyonu döngü halinde durmak yok.", descEn: "Two back-to-back tabata blocks, minimal rest. VO2 max peak. 10 burpees followed by 10 reps of a 1-2-3 combo in a loop — no stopping.", equip: [], rest: 60, met: 12, hedefKas: "Tüm Vücut" },
   ],
   combo: [
-    { level: "beginner", name: "1-2 (jab-cross)", nameEn: "1-2 (jab-cross)", sets: "5x2 dk", duration: "2 dk", desc: "Boksun temeli.", descEn: "The foundation.", equip: [] },
-    { level: "beginner", name: "1-1-2 (çift jab-cross)", nameEn: "1-1-2 (double jab-cross)", sets: "4x2 dk", duration: "2 dk", desc: "İlk jab ölçer, ikinci girer, cross iner.", descEn: "First jab measures, second commits, cross lands.", equip: [] },
-    { level: "beginner", name: "1-2-3 (jab-cross-kroşe)", nameEn: "1-2-3 (jab-cross-hook)", sets: "5x2 dk", duration: "2 dk", desc: "Klasik üçlü, akıcı geçiş.", descEn: "Classic three, fluid transition.", equip: [] },
-    { level: "beginner", name: "2-3 (cross-kroşe)", nameEn: "2-3 (cross-hook)", sets: "4x2 dk", duration: "2 dk", desc: "Güçlü el ile aç, kroşe ile sar.", descEn: "Open with the power hand, wrap with the hook.", equip: [] },
-    { level: "beginner", name: "1-2 vücut (gövdeye)", nameEn: "1-2 to the body", sets: "4x2 dk", duration: "2 dk", desc: "Diz bük, gövdeye jab-cross. Kat değiştirme temeli.", descEn: "Bend the knees, jab-cross to the body. Level-change basics.", equip: [] },
-    { level: "intermediate", name: "1-2-3-2 zincir", nameEn: "1-2-3-2 chain", sets: "5x3 dk", duration: "3 dk", desc: "Klasik 4'lü.", descEn: "Classic four.", equip: [] },
-    { level: "intermediate", name: "1-2-3b-2 (vücut-baş)", nameEn: "1-2-3body-2 (body-head)", sets: "4x3 dk", duration: "3 dk", desc: "Gövdeye kroşe ile guard'ı indir, cross ile başa dön.", descEn: "Body hook drops the guard, cross returns to the head.", equip: [] },
-    { level: "intermediate", name: "1-6-3 (jab-aparkat-kroşe)", nameEn: "1-6-3 (jab-uppercut-hook)", sets: "4x3 dk", duration: "3 dk", desc: "Üç açıdan saldırı.", descEn: "Three-angle attack.", equip: [] },
-    { level: "intermediate", name: "1-2-5-6 (iki aparkat)", nameEn: "1-2-5-6 (double uppercut)", sets: "4x3 dk", duration: "3 dk", desc: "Düz-yukarı geçiş.", descEn: "Straight-to-upward transition.", equip: [] },
-    { level: "pro", name: "1-2-3-4-5-6 tam seri", nameEn: "1-2-3-4-5-6 full series", sets: "6x3 dk", duration: "3 dk", desc: "Tüm vuruş tipleri, maksimum hız.", descEn: "Every punch type, max speed.", equip: [] },
-    { level: "pro", name: "Savunma araları olan kombinasyon", nameEn: "Combo with defense gaps", sets: "5x3 dk", duration: "3 dk", desc: "Vur-slip-vur paterni.", descEn: "Punch-slip-punch pattern.", equip: [] },
-    { level: "pro", name: "Doğaçlama kombinasyon", nameEn: "Freestyle combination", sets: "4x2 dk", duration: "2 dk", desc: "Anlık karar, gerçek dövüş zekası.", descEn: "On-the-fly decisions, real fight IQ.", equip: [] },
-    { level: "pro", name: "Yorgunlukta kombinasyon kalitesi", nameEn: "Combo quality under fatigue", sets: "3x3 dk", duration: "3 dk", desc: "Son round, form bozulmasın.", descEn: "Final round, form must hold.", equip: [] },
-    { level: "pro", name: "2-3-2 (cross-kroşe-cross) güç", nameEn: "2-3-2 (cross-hook-cross) power", sets: "5x3 dk", duration: "3 dk", desc: "Momentum kullanarak güçlü bitir.", descEn: "Use momentum to finish strong.", equip: [] },
-    { level: "pro", name: "1-2-3b-3 (vücut-baş kroşe)", nameEn: "1-2-3body-3 (body-head hook)", sets: "4x3 dk", duration: "3 dk", desc: "Vücuda kroşe ile guard'ı indir, başa kroşe ile bitir.", descEn: "Body hook drops the guard, head hook finishes.", equip: [] },
-    { level: "pro", name: "Çift kroşe (3-3) düzeltmesi", nameEn: "Double hook (3-3) fix", sets: "4x3 dk", duration: "3 dk", desc: "Aynı elle iki kroşe - biri vücut biri baş. Zamanlama.", descEn: "Two hooks same hand - body then head. Timing.", equip: [] },
-    { level: "pro", name: "Counter combo (kaçır-vur)", nameEn: "Counter combo (slip-strike)", sets: "5x3 dk", duration: "3 dk", desc: "Slip sonrası 4'lü kontra serisi. Reaktif saldırı.", descEn: "4-punch counter after a slip. Reactive offense.", equip: [] },
-    { level: "pro", name: "8 vuruşluk maraton zinciri", nameEn: "8-punch marathon chain", sets: "5x2 dk", duration: "2 dk", desc: "Durmadan 8'li seri tekrarı. Hacim ve dayanıklılık.", descEn: "Repeat an 8-punch series nonstop. Volume and endurance.", equip: [] },
-    { level: "pro", name: "Feint-kombinasyon-feint sarmalı", nameEn: "Feint-combo-feint spiral", sets: "4x3 dk", duration: "3 dk", desc: "Sahte hamleyle aç, kombinasyon at, feint ile çık. Aldatma ustalığı.", descEn: "Open with a feint, land the combo, exit with a feint. Deception mastery.", equip: [] },
+    { level: "beginner", name: "1-2 (jab-cross)", nameEn: "1-2 (jab-cross)", sets: "3x3 dk", duration: "3 dk", desc: "Jab açar, cross gücü taşır. Boksun en temel ikilisi.", descEn: "Jab opens, cross brings the power. Boxing's most basic pair.", equip: [], rest: 45, met: 7.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "1-1-2 (çift jab-cross)", nameEn: "1-1-2 (double jab-cross)", sets: "3x3 dk", duration: "3 dk", desc: "İlk jab ölçer, ikinci jab girer, cross gücü indirir.", descEn: "The first jab measures, the second steps in, the cross brings it down.", equip: [], rest: 45, met: 7.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "beginner", name: "1-2-3 (jab-cross-kroşe)", nameEn: "1-2-3 (jab-cross-hook)", sets: "3x3 dk", duration: "3 dk", desc: "Klasik üçlü; akıcı geçişle jab-cross-kroşe.", descEn: "The classic trio; jab-cross-hook with smooth transitions.", equip: [], rest: 45, met: 7.5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "beginner", name: "2-3 (cross-kroşe)", nameEn: "2-3 (cross-hook)", sets: "3x3 dk", duration: "3 dk", desc: "Güçlü elle aç, kroşe ile sar. Kısa mesafe ikilisi.", descEn: "Open with the power hand, wrap with the hook. A short-range pair.", equip: [], rest: 45, met: 7.5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "beginner", name: "1-2 vücut (gövdeye)", nameEn: "1-2 to the body", sets: "3x3 dk", duration: "3 dk", desc: "Diz bük, gövdeye jab-cross at. Kat değiştirmenin temeli.", descEn: "Bend the knees, throw a jab-cross to the body. The basis of level change.", equip: [], rest: 45, met: 7.5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "intermediate", name: "1-2-3-2 zincir", nameEn: "1-2-3-2 chain", sets: "3x3 dk", duration: "3 dk", desc: "Klasik 4'lü zincir; ritmi koruyarak akıcı vur.", descEn: "The classic 4-punch chain; hit fluidly while keeping rhythm.", equip: [], rest: 60, met: 8, hedefKas: "Omuz, Sırt, Core" },
+    { level: "intermediate", name: "1-2-3b-2 (vücut-baş)", nameEn: "1-2-3body-2 (body-head)", sets: "3x3 dk", duration: "3 dk", desc: "Gövdeye kroşe ile guard'ı indir, cross ile başa dön.", descEn: "Drop the guard with a hook to the body, return to the head with the cross.", equip: [], rest: 60, met: 8, hedefKas: "Core, Omuz, Bacak" },
+    { level: "intermediate", name: "1-6-3 (jab-aparkat-kroşe)", nameEn: "1-6-3 (jab-uppercut-hook)", sets: "3x3 dk", duration: "3 dk", desc: "Üç farklı açıdan ardışık saldırı.", descEn: "Successive attack from three different angles.", equip: [], rest: 60, met: 8, hedefKas: "Core, Omuz, Bacak" },
+    { level: "intermediate", name: "1-2-5-6 (iki aparkat)", nameEn: "1-2-5-6 (double uppercut)", sets: "3x3 dk", duration: "3 dk", desc: "Düz vuruşlardan alttan aparkatlara geçiş.", descEn: "Transition from straight punches to uppercuts from below.", equip: [], rest: 60, met: 8, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "1-2-3-4-5-6 tam seri", nameEn: "1-2-3-4-5-6 full series", sets: "3x3 dk", duration: "3 dk", desc: "Tüm vuruş tiplerini içeren, maksimum hızda tam seri.", descEn: "A full series at max speed containing all punch types.", equip: [], rest: 60, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Savunma araları olan kombinasyon", nameEn: "Combo with defense gaps", sets: "3x3 dk", duration: "3 dk", desc: "Vur-slip-vur paterniyle saldırıyı savunmayla harmanla.", descEn: "Blend attack with defense in a hit-slip-hit pattern.", equip: [], rest: 60, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Doğaçlama kombinasyon", nameEn: "Freestyle combination", sets: "3x3 dk", duration: "3 dk", desc: "Anlık karar vererek doğaçla; gerçek dövüş zekasını geliştir.", descEn: "Improvise with instant decisions; develops real fight intelligence.", equip: [], rest: 45, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Yorgunlukta kombinasyon kalitesi", nameEn: "Combo quality under fatigue", sets: "3x3 dk", duration: "3 dk", desc: "Son round yorgunluğunda bile form bozulmadan vur.", descEn: "Hit without form breaking down even under last-round fatigue.", equip: [], rest: 60, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "2-3-2 (cross-kroşe-cross) güç", nameEn: "2-3-2 (cross-hook-cross) power", sets: "3x3 dk", duration: "3 dk", desc: "Momentumu kullanarak güçlü bir şekilde bitir.", descEn: "Finish strong using the momentum.", equip: [], rest: 60, met: 8.5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "1-2-3b-3 (vücut-baş kroşe)", nameEn: "1-2-3body-3 (body-head hook)", sets: "3x3 dk", duration: "3 dk", desc: "Vücuda kroşe ile guard'ı indir, başa kroşe ile bitir.", descEn: "Drop the guard with a hook to the body, finish with a hook to the head.", equip: [], rest: 60, met: 8.5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "Çift kroşe (3-3) düzeltmesi", nameEn: "Double hook (3-3) fix", sets: "3x3 dk", duration: "3 dk", desc: "Aynı elle iki kroşe — biri vücuda, biri başa. Zamanlama çalışması.", descEn: "Two hooks with the same hand — one to the body, one to the head. Timing work.", equip: [], rest: 60, met: 8.5, hedefKas: "Core, Omuz, Bacak" },
+    { level: "pro", name: "Counter combo (kaçır-vur)", nameEn: "Counter combo (slip-strike)", sets: "3x3 dk", duration: "3 dk", desc: "Slip sonrası 4'lü kontra serisi. Reaktif (tepkisel) saldırı.", descEn: "A 4-punch counter series after a slip. Reactive attack.", equip: [], rest: 60, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "8 vuruşluk maraton zinciri", nameEn: "8-punch marathon chain", sets: "3x3 dk", duration: "3 dk", desc: "Durmadan 8'li serileri tekrarla. Hacim ve dayanıklılık.", descEn: "Repeat 8-punch series nonstop. Volume and endurance.", equip: [], rest: 15, met: 11, hedefKas: "Omuz, Sırt, Core" },
+    { level: "pro", name: "Feint-kombinasyon-feint sarmalı", nameEn: "Feint-combo-feint spiral", sets: "3x3 dk", duration: "3 dk", desc: "Sahte hamleyle aç, kombinasyonu boşalt, feint ile çık. Aldatma ustalığı.", descEn: "Open with a feint, unload the combination, exit with a feint. Mastery of deception.", equip: [], rest: 60, met: 8.5, hedefKas: "Omuz, Sırt, Core" },
   ],
   sparring: [
-    { level: "beginner", name: "Yavaş tempo sparring sim", nameEn: "Slow-tempo sparring sim", sets: "3x3 dk", duration: "3 dk", desc: "Kontrollü hız, mesafe tutma.", descEn: "Controlled pace, keep distance.", equip: [] },
-    { level: "beginner", name: "Savunma odaklı round", nameEn: "Defense-focused round", sets: "2x3 dk", duration: "3 dk", desc: "Atak yerine kaçınma ve blok.", descEn: "Evasion and blocking over offense.", equip: [] },
-    { level: "beginner", name: "Sadece jab sparring", nameEn: "Jab-only sparring", sets: "3x2 dk", duration: "2 dk", desc: "Sadece jab ile mesafe ve zamanlama oyna.", descEn: "Play distance and timing with the jab only.", equip: [] },
-    { level: "beginner", name: "Hafif teknik sparring", nameEn: "Light technical sparring", sets: "3x2 dk", duration: "2 dk", desc: "Düşük güç, teknik ve kontrol odaklı.", descEn: "Low power, technique and control focused.", equip: [] },
-    { level: "beginner", name: "Tek vuruş - tek savunma", nameEn: "One punch - one defense", sets: "3x2 dk", duration: "2 dk", desc: "Sırayla vur ve savun, ritmi öğren.", descEn: "Take turns attacking and defending, learn the rhythm.", equip: [] },
-    { level: "intermediate", name: "Baskı kurma taktiği", nameEn: "Pressure tactic", sets: "3x3 dk", duration: "3 dk", desc: "İleri adımla alan kapat.", descEn: "Cut the ring with forward steps.", equip: [] },
-    { level: "intermediate", name: "Geri çekilip kontra", nameEn: "Back-foot counter", sets: "3x3 dk", duration: "3 dk", desc: "Rakibi öne çek, kontra at.", descEn: "Draw them in, counter.", equip: [] },
-    { level: "intermediate", name: "Açı sparringi", nameEn: "Angle sparring", sets: "3x3 dk", duration: "3 dk", desc: "Düz hatta durma, sürekli açı değiştir.", descEn: "Never stand square, constantly change angles.", equip: [] },
-    { level: "intermediate", name: "Kombinasyon sonrası çıkış", nameEn: "Combo then exit", sets: "3x2 dk", duration: "2 dk", desc: "Kombinasyonu at, hemen menzil dışına çık.", descEn: "Land the combo, exit range immediately.", equip: [] },
-    { level: "pro", name: "Tam tempo sparring", nameEn: "Full-tempo sparring", sets: "6x3 dk", duration: "3 dk", desc: "Gerçek müsabaka yoğunluğu.", descEn: "Real fight intensity.", equip: [] },
-    { level: "pro", name: "Taktik geçişleri (round içi)", nameEn: "In-round tactic switches", sets: "3x3 dk", duration: "3 dk", desc: "Baskı→savunma→kontra geçişi.", descEn: "Pressure→defense→counter switching.", equip: [] },
-    { level: "pro", name: "Köşe baskısı + çıkış", nameEn: "Corner pressure + escape", sets: "3x2 dk", duration: "2 dk", desc: "Baskı altında soğukkanlı çıkış.", descEn: "Calm escape under pressure.", equip: [] },
-    { level: "pro", name: "Son round şampiyonluk anı", nameEn: "Final-round championship moment", sets: "1x3 dk", duration: "3 dk", desc: "Tüm enerjiyi son round'a sakla.", descEn: "Save everything for the final round.", equip: [] },
-    { level: "pro", name: "Açık ring kontrolü (ring generalship)", nameEn: "Ring generalship", sets: "4x3 dk", duration: "3 dk", desc: "Tempoyu ve mesafeyi sen belirle, rakibi yönet.", descEn: "Dictate tempo and distance, control the opponent.", equip: [] },
-    { level: "pro", name: "Body snatcher (vücut avcısı)", nameEn: "Body snatcher", sets: "4x3 dk", duration: "3 dk", desc: "Sürekli vücuda yatırım yap, geç roundlarda hasadı al.", descEn: "Invest in the body, reap the reward in late rounds.", equip: [] },
-    { level: "pro", name: "Stil bozma (awkward sparring)", nameEn: "Style-breaking sparring", sets: "3x3 dk", duration: "3 dk", desc: "Ritim bozucu, beklenmedik açılar. Rakibi rahatsız et.", descEn: "Rhythm-breaking, unexpected angles. Make them uncomfortable.", equip: [] },
-    { level: "pro", name: "Nakavt arayışı (kill shot setup)", nameEn: "Knockout setup", sets: "3x3 dk", duration: "3 dk", desc: "Feint ve kombolarla açık yarat, bitirici vuruşu kur.", descEn: "Create openings with feints and combos, set up the finisher.", equip: [] },
-    { level: "pro", name: "12 round dayanıklılık sparringi", nameEn: "12-round endurance sparring", sets: "12x", duration: "1 dk", desc: "Tam mesafe simülasyonu, tempo ve teknik sonuna kadar.", descEn: "Full-distance simulation, tempo and technique to the end.", equip: [] },
-    { level: "pro", name: "Southpaw karşı stratejisi", nameEn: "Anti-southpaw strategy", sets: "4x3 dk", duration: "3 dk", desc: "Solak rakibe karşı ön ayak dışında kal, sağ el yolunu aç.", descEn: "Stay outside the lead foot vs a southpaw, open the right-hand lane.", equip: [] },
+    { level: "beginner", name: "Yavaş tempo sparring sim", nameEn: "Slow-tempo sparring sim", sets: "3x3 dk", duration: "3 dk", desc: "Kontrollü hızda, mesafe tutmaya odaklanarak çalış.", descEn: "Work at controlled speed, focusing on holding range.", equip: [], rest: 60, met: 7, hedefKas: "Tüm Vücut" },
+    { level: "beginner", name: "Savunma odaklı round", nameEn: "Defense-focused round", sets: "3x3 dk", duration: "3 dk", desc: "Atak yerine kaçınma ve bloklara odaklan.", descEn: "Focus on evasion and blocks instead of attacking.", equip: [], rest: 60, met: 8.5, hedefKas: "Tüm Vücut" },
+    { level: "beginner", name: "Sadece jab sparring", nameEn: "Jab-only sparring", sets: "3x3 dk", duration: "3 dk", desc: "Sadece jab kullanarak mesafe ve zamanlama oyna.", descEn: "Play range and timing using only the jab.", equip: [], rest: 60, met: 8.5, hedefKas: "Tüm Vücut" },
+    { level: "beginner", name: "Hafif teknik sparring", nameEn: "Light technical sparring", sets: "3x3 dk", duration: "3 dk", desc: "Düşük güçle, teknik ve kontrole odaklı çalış.", descEn: "Work at low power, focused on technique and control.", equip: [], rest: 55, met: 7, hedefKas: "Tüm Vücut" },
+    { level: "beginner", name: "Tek vuruş - tek savunma", nameEn: "One punch - one defense", sets: "3x3 dk", duration: "3 dk", desc: "Sırayla bir vur, bir savun; karşılıklı ritmi öğren.", descEn: "Hit once, defend once in turn; learn the mutual rhythm.", equip: [], rest: 45, met: 8.5, hedefKas: "Tüm Vücut" },
+    { level: "intermediate", name: "Baskı kurma taktiği", nameEn: "Pressure tactic", sets: "3x3 dk", duration: "3 dk", desc: "İleri adımlarla alanı kapat, rakibi geri çekilmeye zorla.", descEn: "Close the space with forward steps and force the opponent to retreat.", equip: [], rest: 60, met: 9, hedefKas: "Tüm Vücut" },
+    { level: "intermediate", name: "Geri çekilip kontra", nameEn: "Back-foot counter", sets: "3x3 dk", duration: "3 dk", desc: "Rakibi öne çek, geri çekilirken kontra at.", descEn: "Draw the opponent in, counter while stepping back.", equip: [], rest: 60, met: 9, hedefKas: "Tüm Vücut" },
+    { level: "intermediate", name: "Açı sparringi", nameEn: "Angle sparring", sets: "3x3 dk", duration: "3 dk", desc: "Düz hatta durma; sürekli açı değiştirerek dövüş.", descEn: "Don't stand on a straight line; fight by constantly changing angles.", equip: [], rest: 60, met: 9, hedefKas: "Tüm Vücut" },
+    { level: "intermediate", name: "Kombinasyon sonrası çıkış", nameEn: "Combo then exit", sets: "3x3 dk", duration: "3 dk", desc: "Kombinasyonu at, hemen menzil dışına çık.", descEn: "Throw the combination, then immediately exit out of range.", equip: [], rest: 45, met: 9, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Tam tempo sparring", nameEn: "Full-tempo sparring", sets: "3x3 dk", duration: "3 dk", desc: "Gerçek müsabaka yoğunluğunda çalış.", descEn: "Work at real competition intensity.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Taktik geçişleri (round içi)", nameEn: "In-round tactic switches", sets: "3x3 dk", duration: "3 dk", desc: "Baskı → savunma → kontra geçişlerini round içinde uygula.", descEn: "Apply pressure → defense → counter transitions within the round.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Köşe baskısı + çıkış", nameEn: "Corner pressure + escape", sets: "3x3 dk", duration: "3 dk", desc: "Köşede baskı altında soğukkanlılıkla çık.", descEn: "Exit calmly under pressure in the corner.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Son round şampiyonluk anı", nameEn: "Final-round championship moment", sets: "3x3 dk", duration: "3 dk", desc: "Tüm enerjini son round'a sakla, orada boşalt.", descEn: "Save all your energy for the last round and unload it there.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Açık ring kontrolü (ring generalship)", nameEn: "Ring generalship", sets: "3x3 dk", duration: "3 dk", desc: "Tempoyu ve mesafeyi sen belirle, rakibi yönet.", descEn: "Set the tempo and range yourself, control the opponent.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Body snatcher (vücut avcısı)", nameEn: "Body snatcher", sets: "3x3 dk", duration: "3 dk", desc: "Sürekli vücuda yatırım yap, geç roundlarda hasadını al.", descEn: "Keep investing in the body, reap the reward in the late rounds.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Stil bozma (awkward sparring)", nameEn: "Style-breaking sparring", sets: "3x3 dk", duration: "3 dk", desc: "Ritim bozucu, beklenmedik açılarla rakibi rahatsız et.", descEn: "Unsettle the opponent with rhythm-breaking, unexpected angles.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Nakavt arayışı (kill shot setup)", nameEn: "Knockout setup", sets: "3x3 dk", duration: "3 dk", desc: "Feint ve kombolarla açık yarat, bitirici vuruşu kur.", descEn: "Create openings with feints and combos, set up the finishing shot.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Rakip hook atmayı seviyor", nameEn: "Opponent loves hooks", sets: "3x3 dk", duration: "3 dk", desc: "Hookları blokla yada roll at karaciğer çeneyi değerlendir açıyı değiş vurdukdan sonra maçı kazanman lazım.", descEn: "Block or roll the hooks, weigh the liver and chin, change the angle, and you need to win the match after you land.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
+    { level: "pro", name: "Southpaw karşı stratejisi", nameEn: "Anti-southpaw strategy", sets: "3x3 dk", duration: "3 dk", desc: "Solak rakibe karşı ön ayağının dışında kal, sağ el yolunu aç.", descEn: "Against a southpaw, stay outside their lead foot and open the right-hand path.", equip: [], rest: 40, met: 9.5, hedefKas: "Tüm Vücut" },
   ],
 };
 
@@ -1361,12 +1378,12 @@ function buildPlaylist(program, customRest, t) {
       const restSec = computeRestSeconds(ex, perSet || 0, phase.name, customRest);
       if (perSet && sets >= 1) {
         for (let s = 0; s < sets; s++) {
-          steps.push({ name: ex.name, desc: ex.desc, phaseName: phase.name, color, seconds: perSet, setLabel: sets > 1 ? `Set ${s + 1}/${sets}` : null, timed: true, kind: "exercise" });
+          steps.push({ name: ex.name, nameEn: ex.nameEn, video: ex.video, desc: ex.desc, hedefKas: ex.hedefKas, phaseName: phase.name, color, seconds: perSet, setLabel: sets > 1 ? `Set ${s + 1}/${sets}` : null, timed: true, kind: "exercise" });
           // Setler arası dinlenme (ısınma/soğuma hariç, son set hariç)
           if (!isWC && s < sets - 1 && restSec > 0) steps.push(makeRest(restSec, ex.name, t));
         }
       } else {
-        steps.push({ name: ex.name, desc: ex.desc, phaseName: phase.name, color, seconds: null, setLabel: ex.sets || null, timed: false, kind: "exercise" });
+        steps.push({ name: ex.name, nameEn: ex.nameEn, video: ex.video, desc: ex.desc, hedefKas: ex.hedefKas, phaseName: phase.name, color, seconds: null, setLabel: ex.sets || null, timed: false, kind: "exercise" });
       }
       // Ana antrenmanda HER hareketten sonra dinlenme (fazın son hareketi dahil — faz geçişi için)
       const isLastInPhase = exIdx === exercises.length - 1;
@@ -1412,6 +1429,25 @@ const SHADOW_STYLES = [
 ];
 
 function catLabel(c, lang) { return lang === "en" ? c.en : c.tr; }
+// "5x3 dk" → "5 round × 3 dk", "15-12-10-8" → olduğu gibi (azalan tekrar), boşsa ""
+function humanizeSets(s, lang) {
+  if (!s) return "";
+  if (isDescendingReps(s)) return s + (lang === "en" ? " reps" : " tekrar");
+  const m = s.match(/^(\d+)\s*x\s*(\d+)\s*(dk|sn|min)/i);
+  if (m) {
+    const unit = m[3].toLowerCase().startsWith("s") && m[3].toLowerCase() !== "sn" ? "min" : m[3];
+    const roundW = lang === "en" ? "rounds" : "round";
+    return `${m[1]} ${roundW} × ${m[2]} ${unit === "min" ? "dk" : unit}`;
+  }
+  return s;
+}
+// Hareket videosu linki: özel "video" alanı varsa onu, yoksa YouTube'da hareket adıyla arama açar.
+function moveVideoUrl(ex, lang) {
+  if (ex && ex.video) return ex.video; // ileride elle eklenebilecek özel link
+  const name = (lang === "en" ? (ex.nameEn || ex.name) : ex.name) || "";
+  const q = encodeURIComponent((lang === "en" ? name + " boxing technique" : name + " boks tekniği"));
+  return `https://www.youtube.com/results?search_query=${q}`;
+}
 
 // ─── ANTRENÖR REHBERİ ─────────────────────────────────────────────────────────
 // Profesyonel boks seansı sırası (araştırmaya dayalı):
@@ -1466,7 +1502,8 @@ function epicTitle(catId, level, lang) {
 }
 
 // ─── Egzersiz Satırı (tik sistemi) ────────────────────────────────────────────
-function ExerciseRow({ ex, color, index, done, onToggleDone }) {
+function ExerciseRow({ ex, color, index, done, onToggleDone, lang, editMode, onRemove, isWC, rounds, onRounds, restVal, onRest }) {
+  const t = T[lang || "tr"];
   const dur = parseDuration(ex.duration || "");
   const [left, setLeft] = useState(dur);
   const [running, setRunning] = useState(false);
@@ -1493,15 +1530,20 @@ function ExerciseRow({ ex, color, index, done, onToggleDone }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: done ? "#666" : "#f0f0f0", fontSize: 13, fontWeight: 700, textDecoration: done ? "line-through" : "none" }}>{ex.name}</div>
           <div style={{ color: "#666", fontSize: 11, marginTop: 1 }}>
-            {ex.sets && <span style={{ color, fontWeight: 700 }}>{ex.sets}</span>}
-            {ex.sets && ex.duration && " · "}{ex.duration}
+            {humanizeSets(ex.sets || ex.duration, lang)}
           </div>
         </div>
-        {dur && !done && (
+        {dur && !done && !editMode && (
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ color: running ? color : timerDone ? "#444" : "#777", fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums", minWidth: 40, textAlign: "right" }}>{mm}:{ss}</span>
             <button onClick={toggle} style={{ background: running ? "#2a2a2a" : timerDone ? "#1e1e1e" : color, border: "none", borderRadius: 8, width: 30, height: 30, cursor: "pointer", fontSize: 12, color: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>{running ? "⏸" : timerDone ? "↺" : "▶"}</button>
           </div>
+        )}
+        {editMode && onRemove && (
+          <button onClick={onRemove}
+            style={{ background: `${RED}1a`, border: `1px solid ${RED}66`, color: RED, borderRadius: 8, padding: "7px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+            ✕ {(T[lang || "tr"]).removeMove}
+          </button>
         )}
       </div>
       {dur && !done && !timerDone && (
@@ -1510,6 +1552,38 @@ function ExerciseRow({ ex, color, index, done, onToggleDone }) {
         </div>
       )}
       {ex.desc && <div style={{ marginTop: 7, color: "#555", fontSize: 11, lineHeight: 1.5 }}>{ex.desc}</div>}
+      {ex.hedefKas && !isWC && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8, background: `${color}14`, border: `1px solid ${color}33`, borderRadius: 7, padding: "3px 9px" }}>
+          <span style={{ fontSize: 11 }}>💪</span>
+          <span style={{ color: color, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3 }}>{ex.hedefKas}</span>
+        </div>
+      )}
+      {editMode && !isWC && (
+        <div style={{ display: "flex", gap: 8, marginTop: 9, flexWrap: "wrap", alignItems: "center" }}>
+          {rounds != null && onRounds ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#ffffff08", borderRadius: 8, padding: "4px 6px 4px 10px" }}>
+              <span style={{ color: "#777", fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5 }}>{t.rounds3.toUpperCase()}</span>
+              <button onClick={() => onRounds(Math.max(1, rounds - 1))} style={{ width: 22, height: 22, borderRadius: 6, border: `1px solid ${color}55`, background: "transparent", color, fontSize: 14, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>−</button>
+              <span style={{ color: "#fff", fontSize: 12.5, fontWeight: 800, minWidth: 16, textAlign: "center" }}>{rounds}</span>
+              <button onClick={() => onRounds(Math.min(15, rounds + 1))} style={{ width: 22, height: 22, borderRadius: 6, border: `1px solid ${color}55`, background: "transparent", color, fontSize: 14, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>+</button>
+            </div>
+          ) : isDescendingReps(ex.sets) ? (
+            <span style={{ color: "#555", fontSize: 10.5, fontStyle: "italic" }}>🔒 {t.fixedSets}</span>
+          ) : null}
+          {onRest && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#ffffff08", borderRadius: 8, padding: "4px 6px 4px 10px" }}>
+              <span style={{ color: "#777", fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5 }}>{t.restLabel.toUpperCase()}</span>
+              <button onClick={() => onRest(Math.max(10, (restVal || 30) - 5))} style={{ width: 22, height: 22, borderRadius: 6, border: `1px solid ${color}55`, background: "transparent", color, fontSize: 14, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>−</button>
+              <span style={{ color: "#fff", fontSize: 12.5, fontWeight: 800, minWidth: 28, textAlign: "center" }}>{restVal || 30}s</span>
+              <button onClick={() => onRest(Math.min(90, (restVal || 30) + 5))} style={{ width: 22, height: 22, borderRadius: 6, border: `1px solid ${color}55`, background: "transparent", color, fontSize: 14, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>+</button>
+            </div>
+          )}
+        </div>
+      )}
+      <a href={moveVideoUrl(ex, lang || "tr")} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+        style={{ display: "inline-block", marginTop: 8, color: color, fontSize: 11, fontWeight: 800, textDecoration: "none", border: `1px solid ${color}44`, borderRadius: 8, padding: "5px 11px" }}>
+        {(T[lang || "tr"]).watchVideo}
+      </a>
     </div>
   );
 }
@@ -1534,10 +1608,93 @@ function DurationRow({ label, color, value, options, onChange, last }) {
 
 
 // ─── Program Görüntüleme (tik listesi + başlat) ───────────────────────────────
-function ProgramDisplay({ program, accentColor, lang, roundSec, restSec, coachOn, soundOn, warnSec, onComplete }) {
+function ProgramDisplay({ program: incomingProgram, accentColor, lang, roundSec, restSec, coachOn, soundOn, warnSec, onComplete, equipment, level }) {
   const t = T[lang];
+  const equip = equipment || [];
+  const lvl = level || "intermediate";
   const [playing, setPlaying] = useState(false);
   const [doneSet, setDoneSet] = useState(() => new Set());
+  // Programı düzenlenebilir yap: kullanıcı başlatmadan önce hareket çıkarabilsin
+  const [program, setProgram] = useState(incomingProgram);
+  const [editMode, setEditMode] = useState(false);
+  useEffect(() => { setProgram(incomingProgram); }, [incomingProgram]);
+
+  // Isınma/soğuma fazı mı? (bu fazlardaki hareketlerde round/dinlenme düzenlenemez — akıcı olmalı)
+  const isWCPhase = (ph) => /Isınma|Soğuma|Warm|Cool/i.test(ph?.name || "");
+
+  // Bir hareketi programdan çıkar (faz boş kalırsa fazı da kaldır)
+  const removeExercise = (phaseIdx, exIdx) => {
+    setProgram(prev => {
+      const phases = prev.phases.map((ph, pi) => {
+        if (pi !== phaseIdx) return ph;
+        return { ...ph, exercises: ph.exercises.filter((_, ei) => ei !== exIdx) };
+      }).filter(ph => {
+        // Isınma/soğuma boş kalsa bile kalsın; ana fazlar boşalınca kalksın
+        return isWCPhase(ph) || (ph.exercises && ph.exercises.length > 0);
+      });
+      return { ...prev, phases };
+    });
+    setDoneSet(new Set()); // tik'leri sıfırla (indeksler kaydı)
+  };
+
+  // Bir hareketin round sayısını değiştir (sets ve duration alanlarına aynı round'u uygula)
+  const setExerciseRounds = (phaseIdx, exIdx, rounds) => {
+    setProgram(prev => {
+      const phases = prev.phases.map((ph, pi) => {
+        if (pi !== phaseIdx) return ph;
+        const exercises = ph.exercises.map((ex, ei) => ei !== exIdx ? ex : {
+          ...ex, sets: applyRounds(ex.sets, rounds), duration: applyRoundsToDuration(ex.duration, rounds),
+        });
+        return { ...ph, exercises };
+      });
+      return { ...prev, phases };
+    });
+  };
+  // Bir hareketin dinlenme süresini (sn) değiştir — elle ayarlanan değer her zaman öncelikli kullanılır
+  const setExerciseRest = (phaseIdx, exIdx, restSecVal) => {
+    setProgram(prev => {
+      const phases = prev.phases.map((ph, pi) => {
+        if (pi !== phaseIdx) return ph;
+        const exercises = ph.exercises.map((ex, ei) => ei !== exIdx ? ex : { ...ex, rest: restSecVal });
+        return { ...ph, exercises };
+      });
+      return { ...prev, phases };
+    });
+  };
+
+  // ─── Düzenleme modunda yeni hareket ekleme akışı ───
+  const [addPickerCat, setAddPickerCat] = useState(null); // kategori seçildi, hareket seçilecek
+  const [addPickerEx, setAddPickerEx] = useState(null);   // { catId, ex } — round ayarlanacak
+  const [addPickerRounds, setAddPickerRounds] = useState(3);
+
+  // Seçilen hareketi (kullanıcının ayarladığı round ile) programa ekle.
+  // İlgili kategoride faz varsa sonuna ekler; yoksa yeni faz kurar ve antrenör sıralamasına göre doğru yere yerleştirir.
+  const addExerciseToPhase = (catId, ex, rounds) => {
+    const c = CATEGORIES.find(x => x.id === catId);
+    const newEx = {
+      name: lang === "en" ? ex.nameEn : ex.name, nameEn: ex.nameEn, video: ex.video,
+      sets: applyRounds(ex.sets, rounds), duration: applyRoundsToDuration(ex.duration, rounds),
+      desc: lang === "en" ? ex.descEn : ex.desc,
+      met: ex.met, hedefKas: ex.hedefKas, rest: ex.rest,
+    };
+    setProgram(prev => {
+      let phases = (prev.phases || []).map(ph => ({ ...ph, exercises: ph.exercises ? [...ph.exercises] : ph.exercises }));
+      const idx = phases.findIndex(ph => ph._catId === catId);
+      if (idx >= 0) {
+        phases[idx].exercises.push(newEx);
+      } else {
+        const newPhase = { name: `${c.icon} ${catLabel(c, lang)}`, color: c.color, _catId: catId, duration: `${estimateMinutes(ex, rounds)} dk`, exercises: [newEx] };
+        const warmups = phases.filter(ph => isWCPhase(ph) && /Isınma|Warm/i.test(ph.name || ""));
+        const cools = phases.filter(ph => isWCPhase(ph) && /Soğuma|Cool/i.test(ph.name || ""));
+        const mains = phases.filter(ph => !isWCPhase(ph));
+        mains.push(newPhase);
+        mains.sort((a, b) => (CATEGORY_ORDER[a._catId] || 99) - (CATEGORY_ORDER[b._catId] || 99));
+        phases = [...warmups, ...mains, ...cools];
+      }
+      return { ...prev, phases };
+    });
+    setDoneSet(new Set());
+  };
 
   const allKeys = [];
   program.phases?.forEach((ph, pi) => ph.exercises?.forEach((_, ei) => allKeys.push(`${pi}-${ei}`)));
@@ -1561,6 +1718,83 @@ function ProgramDisplay({ program, accentColor, lang, roundSec, restSec, coachOn
 
   if (playing) {
     return <WorkoutPlayer program={program} accentColor={accentColor} lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} onExit={() => setPlaying(false)} onComplete={onComplete} />;
+  }
+
+  // Hareket ekleme akışı — round/dinlenme ayarı (Hızlı Başlat ile aynı desen)
+  if (addPickerEx) {
+    const { catId, ex } = addPickerEx;
+    const c = CATEGORIES.find(x => x.id === catId);
+    const est = estimateMinutes(ex, addPickerRounds);
+    return (
+      <div>
+        <button onClick={() => setAddPickerEx(null)} style={{ background: "none", border: "none", color: RED, fontSize: 13, cursor: "pointer", marginBottom: 20, display: "flex", alignItems: "center", gap: 5, padding: 0, fontWeight: 700 }}>‹ {t.back}</button>
+        <div style={{ background: `linear-gradient(135deg, ${c.color}18, ${CARD})`, border: `1px solid ${c.color}44`, borderRadius: 18, padding: 22, marginBottom: 24, textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>{c.icon}</div>
+          <div style={{ color: c.color, fontSize: 11, letterSpacing: 2, fontWeight: 800, marginBottom: 6 }}>{catLabel(c, lang).toUpperCase()}</div>
+          <div style={{ color: "#fff", fontSize: 21, fontWeight: 900, lineHeight: 1.2, marginBottom: 8 }}>{lang === "en" ? ex.nameEn : ex.name}</div>
+          {(lang === "en" ? ex.descEn : ex.desc) && <div style={{ color: "#999", fontSize: 13, lineHeight: 1.5 }}>{lang === "en" ? ex.descEn : ex.desc}</div>}
+        </div>
+
+        {isDescendingReps(ex.sets) ? (
+          <div style={{ background: `${c.color}12`, border: `1px solid ${c.color}44`, borderRadius: 14, padding: 16, marginBottom: 20, textAlign: "center" }}>
+            <div style={{ color: "#888", fontSize: 11, letterSpacing: 1, fontWeight: 700, marginBottom: 8 }}>{lang === "en" ? "SET PLAN (reps per set)" : "SET PLANI (set başına tekrar)"}</div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+              {ex.sets.split("-").map((rep, i) => (
+                <div key={i} style={{ background: CARD, border: `1px solid ${c.color}55`, borderRadius: 10, padding: "8px 14px", minWidth: 36 }}>
+                  <div style={{ color: c.color, fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{rep}</div>
+                  <div style={{ color: "#555", fontSize: 8, fontWeight: 700, marginTop: 2 }}>{i + 1}. set</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ background: `${c.color}12`, border: `1px solid ${c.color}44`, borderRadius: 14, padding: 18, marginBottom: 20 }}>
+            <div style={{ color: "#888", fontSize: 11, letterSpacing: 1, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>{t.selectRounds}</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, marginBottom: 14 }}>
+              <button onClick={() => setAddPickerRounds(r => Math.max(1, r - 1))} style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${c.color}55`, background: "transparent", color: c.color, fontSize: 22, fontWeight: 900, cursor: "pointer" }}>−</button>
+              <div style={{ color: "#fff", fontSize: 32, fontWeight: 900, minWidth: 50, textAlign: "center" }}>{addPickerRounds}</div>
+              <button onClick={() => setAddPickerRounds(r => Math.min(15, r + 1))} style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${c.color}55`, background: "transparent", color: c.color, fontSize: 22, fontWeight: 900, cursor: "pointer" }}>+</button>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 12 }}>
+              {[3, 5, 8, 12].map(n => (
+                <button key={n} onClick={() => setAddPickerRounds(n)} style={{ background: addPickerRounds === n ? c.color : CARD, color: addPickerRounds === n ? "#000" : "#888", border: `1px solid ${addPickerRounds === n ? c.color : LINE}`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{n}</button>
+              ))}
+            </div>
+            <div style={{ color: "#666", fontSize: 11.5, textAlign: "center" }}>{t.estTime}: <span style={{ color: c.color, fontWeight: 800 }}>~{est} dk</span></div>
+          </div>
+        )}
+
+        <button onClick={() => { addExerciseToPhase(catId, ex, addPickerRounds); setAddPickerEx(null); setAddPickerCat(null); }}
+          style={{ width: "100%", padding: "18px", borderRadius: 16, border: "none", background: `linear-gradient(135deg, ${c.color}, ${GOLD})`, color: "#000", fontSize: 17, fontWeight: 900, cursor: "pointer", letterSpacing: 1, boxShadow: `0 6px 24px ${c.color}55` }}>
+          + {t.addToProgram}
+        </button>
+      </div>
+    );
+  }
+
+  // Hareket ekleme akışı — kategori seçildikten sonra havuzdan hareket seç
+  if (addPickerCat) {
+    const c = CATEGORIES.find(x => x.id === addPickerCat);
+    const pool = poolForCategory(addPickerCat, equip, lvl);
+    return (
+      <div>
+        <button onClick={() => setAddPickerCat(null)} style={{ background: "none", border: "none", color: RED, fontSize: 13, cursor: "pointer", marginBottom: 16, display: "flex", alignItems: "center", gap: 5, padding: 0, fontWeight: 700 }}>‹ {t.back}</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 22 }}>{c.icon}</span>
+          <span style={{ color: c.color, fontSize: 15, fontWeight: 900 }}>{catLabel(c, lang)}</span>
+        </div>
+        {pool.length === 0 && <div style={{ color: "#777", fontSize: 13, textAlign: "center", padding: 20 }}>{t.noExForCatLevel}</div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {pool.map((ex, i) => (
+            <button key={i} onClick={() => { setAddPickerEx({ catId: addPickerCat, ex }); setAddPickerRounds(defaultRounds(ex)); }}
+              style={{ textAlign: "left", background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer" }}>
+              <div style={{ color: "#f0f0f0", fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{lang === "en" ? ex.nameEn : ex.name}</div>
+              <div style={{ color: "#666", fontSize: 11, lineHeight: 1.4 }}>{lang === "en" ? ex.descEn : ex.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -1588,10 +1822,16 @@ function ProgramDisplay({ program, accentColor, lang, roundSec, restSec, coachOn
         </div>
       </div>
 
-      <button onClick={() => setPlaying(true)}
-        style={{ width: "100%", marginBottom: 14, padding: "17px", borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${RED}, #ff6b6b)`, color: "#fff", fontSize: 16, fontWeight: 900, cursor: "pointer", letterSpacing: 1, boxShadow: `0 6px 24px ${RED}55` }}>
-        ▶ {t.startWorkout}
-      </button>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <button onClick={() => setPlaying(true)}
+          style={{ flex: 1, padding: "17px", borderRadius: 14, border: "none", background: `linear-gradient(135deg, ${RED}, #ff6b6b)`, color: "#fff", fontSize: 16, fontWeight: 900, cursor: "pointer", letterSpacing: 1, boxShadow: `0 6px 24px ${RED}55` }}>
+          ▶ {t.startWorkout}
+        </button>
+        <button onClick={() => setEditMode(e => !e)}
+          style={{ padding: "17px 16px", borderRadius: 14, border: `1px solid ${editMode ? GOLD : LINE}`, background: editMode ? `${GOLD}18` : CARD, color: editMode ? GOLD : "#999", fontSize: 14, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+          {editMode ? t.doneEditing : t.editProgram}
+        </button>
+      </div>
 
       {/* İlerleme barı */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -1608,6 +1848,20 @@ function ProgramDisplay({ program, accentColor, lang, roundSec, restSec, coachOn
         </button>
       )}
 
+      {editMode && (
+        <div style={{ marginBottom: 18, background: `${GOLD}0a`, border: `1px solid ${GOLD}33`, borderRadius: 14, padding: 14 }}>
+          <div style={{ color: GOLD, fontSize: 10, letterSpacing: 2, marginBottom: 10, fontWeight: 800 }}>{t.addExercise.toUpperCase()}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {[...CATEGORIES].sort((a, b) => (CATEGORY_ORDER[a.id] || 99) - (CATEGORY_ORDER[b.id] || 99)).map(c => (
+              <button key={c.id} onClick={() => setAddPickerCat(c.id)}
+                style={{ background: CARD, border: `1.5px solid ${c.color}55`, color: c.color, borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                {c.icon} {catLabel(c, lang)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {program.phases?.map((phase, pi) => (
         <div key={pi} style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -1618,7 +1872,15 @@ function ProgramDisplay({ program, accentColor, lang, roundSec, restSec, coachOn
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {phase.exercises?.map((ex, ei) => {
               const key = `${pi}-${ei}`;
-              return <ExerciseRow key={ei} ex={ex} color={phase.color || accentColor} index={ei} done={doneSet.has(key)} onToggleDone={() => toggleDone(key)} />;
+              const wc = isWCPhase(phase);
+              const curRest = (typeof ex.rest === "number") ? ex.rest : computeRestSeconds(ex, parseDuration(ex.duration) || 0, phase.name, restSec);
+              return <ExerciseRow key={ei} ex={ex} color={phase.color || accentColor} index={ei} done={doneSet.has(key)} onToggleDone={() => toggleDone(key)} lang={lang} editMode={editMode} onRemove={() => removeExercise(pi, ei)}
+                isWC={wc}
+                rounds={roundsFromSets(ex.sets)}
+                onRounds={(r) => setExerciseRounds(pi, ei, r)}
+                restVal={curRest}
+                onRest={(r) => setExerciseRest(pi, ei, r)}
+              />;
             })}
           </div>
         </div>
@@ -1640,11 +1902,13 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
   // Antrenman ekranında bağımsız aç/kapa — başlangıç değeri ayarlardan gelir
   const [coachOn, setCoachOn] = useState(coachInit);
   const [soundOn, setSoundOn] = useState(soundInit);
+  const [showInfo, setShowInfo] = useState(false); // açıklama açılır penceresi
   const ref = useRef(null);
   const warnedRef = useRef(false);
   const comboRef = useRef(null);
   const leftRef = useRef(left); // combo caller'ın anlık kalan süreyi okuması için
   useEffect(() => { leftRef.current = left; }, [left]);
+  useEffect(() => { setShowInfo(false); }, [idx]); // hareket değişince açıklama penceresini kapat
 
   // Toplam geçen antrenman süresi (duraklatınca durur) — köşede gösterilir
   const [elapsedTotal, setElapsedTotal] = useState(0);
@@ -1753,12 +2017,32 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
   }, [left, running, goNext]);
 
   // Sesli Koç — her hareketin başında BİR KEZ adını ve ne çalışılacağını söyler.
+  // İSTİSNA: Refleks tepki drilinde her 5-10 sn'de "Boks!" diyerek tepki sinyali verir.
   // Dinlenmede sessiz kalır. Hem zamanlı hem tekrar-bazlı hareketlerde çalışır.
   useEffect(() => {
     clearTimeout(comboRef.current);
     if (!coachOn || !started || finished) return; // antrenman başladıysa, bitmediyse
     const st = playlist[idx];
     if (!st || st.kind !== "exercise") return; // dinlenmede / bitişte konuşma
+    // Refleks drili mi? (ad ile tanı — hem otomatik hem kendin kur'da çalışsın)
+    const isReflex = /refleks tepki|reflex reaction/i.test(st.name || "");
+    if (isReflex) {
+      // Önce kısa açıklama, sonra periyodik "Boks!" sinyalleri (5-10 sn arası rastgele)
+      const cue = lang === "en" ? "Box!" : "Boks!";
+      let stop = false;
+      const fireCue = () => {
+        if (stop) return;
+        speak(cue, lang); haptic(HAPTIC.tap);
+        const delay = 5000 + Math.random() * 5000; // 5-10 sn
+        comboRef.current = setTimeout(fireCue, delay);
+      };
+      // İlk önce ne yapılacağını söyle, sonra sinyalleri başlat
+      comboRef.current = setTimeout(() => {
+        speak(lang === "en" ? "Reflex drill. Slip and counter on each call." : "Refleks drili. Her sinyalde kaçıp vur.", lang);
+        comboRef.current = setTimeout(fireCue, 3500);
+      }, 400);
+      return () => { stop = true; clearTimeout(comboRef.current); };
+    }
     const name = st.name || "";
     const desc = (st.desc || "").split(".")[0]; // ilk cümle yeter
     const text = desc ? `${t.coachNow}: ${name}. ${desc}` : `${t.coachNow}: ${name}`;
@@ -1839,15 +2123,25 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
         </div>
       )}
 
-      <div style={{ textAlign: "center", marginTop: 22 }}>
+      <div style={{ textAlign: "center", marginTop: 16 }}>
         <span style={{ background: `${col}22`, color: col, fontSize: 11, fontWeight: 800, letterSpacing: 2, padding: "5px 14px", borderRadius: 8 }}>{step?.kind === "rest" ? t.phaseRest : `${t.now} · ${step?.phaseName}`}</span>
       </div>
 
-      <div style={{ flex: "0 0 auto", padding: "26px 28px 8px", textAlign: "center" }}>
+      <div style={{ flex: "0 0 auto", height: 168, padding: "10px 24px 6px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", overflow: "hidden" }}>
         {step?.kind === "rest" ? (
-          <><div style={{ fontSize: 40, marginBottom: 8 }}>😮‍💨</div><div style={{ color: "#3b82f6", fontSize: 28, fontWeight: 900, marginBottom: 12 }}>{t.rest}</div>{step?.desc && <div style={{ color: "#888", fontSize: 14, maxWidth: 320, margin: "0 auto" }}>{step.desc}</div>}</>
+          <><div style={{ fontSize: 40, marginBottom: 8 }}>😮‍💨</div><div style={{ color: "#3b82f6", fontSize: 28, fontWeight: 900, marginBottom: 10 }}>{t.rest}</div>{step?.desc && <div onClick={() => setShowInfo(true)} style={{ color: "#999", fontSize: 14, lineHeight: 1.45, maxWidth: 340, width: "100%", cursor: "pointer", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{step.desc}</div>}</>
         ) : (
-          <>{step?.setLabel && <div style={{ color: col, fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{step.setLabel}</div>}<div style={{ color: "#fff", fontSize: 27, fontWeight: 900, lineHeight: 1.15, marginBottom: 12 }}>{step?.name}</div>{step?.desc && <div style={{ color: "#888", fontSize: 14, lineHeight: 1.5, maxWidth: 320, margin: "0 auto" }}>{step.desc}</div>}</>
+          <>
+            {step?.setLabel && <div style={{ color: col, fontSize: 14, fontWeight: 800, marginBottom: 6, flexShrink: 0 }}>{step.setLabel}</div>}
+            <div style={{ color: "#fff", fontSize: 25, fontWeight: 900, lineHeight: 1.18, marginBottom: 8, flexShrink: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: 360 }}>{step?.name}</div>
+            {step?.desc && (
+              <div onClick={() => setShowInfo(true)} style={{ cursor: "pointer", maxWidth: 340, width: "100%", flexShrink: 0 }}>
+                <div style={{ color: "#9a9a9a", fontSize: 13.5, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{step.desc}</div>
+                <div style={{ color: col, fontSize: 11, fontWeight: 700, marginTop: 4, opacity: 0.85 }}>{lang === "en" ? "tap to read full ›" : "tam açıklama için dokun ›"}</div>
+              </div>
+            )}
+            <a href={moveVideoUrl(step, lang)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: "inline-block", marginTop: 10, flexShrink: 0, color: RED, fontSize: 13, fontWeight: 800, textDecoration: "none", border: `1px solid ${RED}55`, borderRadius: 10, padding: "8px 16px" }}>{t.watchVideo}</a>
+          </>
         )}
       </div>
 
@@ -1886,6 +2180,27 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
         )}
         <button onClick={() => { setStarted(true); goNext(); }} style={{ background: "#1a1a1a", color: "#666", border: "none", borderRadius: 16, padding: "18px 20px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>{t.skip}</button>
       </div>
+
+      {/* Tam açıklama açılır penceresi — ana ekranı hiç kaydırmaz, dokununca açılır */}
+      {showInfo && step && step.kind !== "rest" && (
+        <div onClick={() => setShowInfo(false)} style={{ position: "absolute", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: CARD, border: `1px solid ${col}55`, borderRadius: 18, padding: "22px 20px", maxWidth: 380, width: "100%", maxHeight: "80%", overflowY: "auto", boxShadow: `0 10px 40px rgba(0,0,0,0.6)` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+              <div style={{ color: "#fff", fontSize: 19, fontWeight: 900, lineHeight: 1.2 }}>{step.name}</div>
+              <button onClick={() => setShowInfo(false)} style={{ flexShrink: 0, background: "#ffffff10", border: "none", color: "#aaa", borderRadius: 9, width: 32, height: 32, fontSize: 16, cursor: "pointer", lineHeight: 1 }}>✕</button>
+            </div>
+            {step.setLabel && <div style={{ color: col, fontSize: 13, fontWeight: 800, marginBottom: 10 }}>{step.setLabel}</div>}
+            <div style={{ color: "#ccc", fontSize: 15, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{step.desc}</div>
+            {step.hedefKas && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 14, background: `${col}18`, border: `1px solid ${col}44`, borderRadius: 8, padding: "5px 11px" }}>
+                <span style={{ fontSize: 13 }}>💪</span>
+                <span style={{ color: col, fontSize: 12, fontWeight: 700 }}>{step.hedefKas}</span>
+              </div>
+            )}
+            <a href={moveVideoUrl(step, lang)} target="_blank" rel="noopener noreferrer" style={{ display: "block", textAlign: "center", marginTop: 16, color: RED, fontSize: 14, fontWeight: 800, textDecoration: "none", border: `1px solid ${RED}55`, borderRadius: 12, padding: "12px" }}>{t.watchVideo}</a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2217,8 +2532,21 @@ function defaultRounds(ex) {
   const n = m ? parseInt(m[1]) : 1;
   return Math.min(12, Math.max(1, n));
 }
+// Hareketin varsayılan round süresi (dakika). "3 dk"→3, "45 sn"→1 (yuvarlanır), yoksa 3.
+function defaultRoundMin(ex) {
+  const d = ex.duration || "";
+  let m = d.match(/(\d+)\s*dk/); if (m) return parseInt(m[1]);
+  m = d.match(/(\d+)\s*sn/); if (m) return Math.max(1, Math.round(parseInt(m[1]) / 60));
+  return 3;
+}
 // Azalan tekrar formatı mı? ("15-12-10-8") — bu hareketlerde round değiştirilemez
 function isDescendingReps(setsStr) { return /^\d+(-\d+)+$/.test(setsStr || ""); }
+// Program içindeki bir hareketin GEÇERLİ round sayısını sets metninden okur ("8x" / "5x3 dk" → N).
+// "15-12-10-8" (azalan tekrar) veya "1 set" / "4 set · MAX" gibi standart olmayan formatlarda null döner (kilitli).
+function roundsFromSets(setsStr) {
+  const m = (setsStr || "").match(/^(\d+)x/);
+  return m ? parseInt(m[1]) : null;
+}
 // Kullanıcının seçtiği round sayısını sets metnine yansıtır: "5x3 dk" + 8 → "8x3 dk"
 function applyRounds(setsStr, rounds) {
   if (!setsStr) return rounds > 1 ? `${rounds} round` : setsStr;
@@ -2251,70 +2579,109 @@ function estimateMinutes(ex, rounds) {
 // Toplam süreyi alır, maksimum gelişim için dengeli bir program kurar.
 // Mantık: gölge boksu HER gün sabit (teknik temeli), diğer kategoriler güne göre
 // rotasyonlu ağırlıkla (bir gün torba yoğun, ertesi gün kondisyon/kuvvet öne çıkar).
-function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal) {
+function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focusCats) {
   const t = T[lang];
   // 1. Isınma & soğuma: toplamın ~%20'si, ikiye bölünür [min 6, max 16 toplam]
   const wcTotal = Math.min(16, Math.max(6, Math.round(totalMin * 0.2)));
   const warmMin = Math.ceil(wcTotal / 2);
   const coolMin = wcTotal - warmMin;
-  // Ana bölüm = toplam − ısınma/soğuma. Bunun bir kısmı DİNLENMEYE gider (~%28).
-  // Bu yüzden hareketlere ayrılacak aktif süreyi önceden küçültüyoruz ki
-  // dinlenmeler eklenince GERÇEK toplam ~ seçilen süreye eşit kalsın.
   const mainBlock = Math.max(8, totalMin - wcTotal);
-  const restBudgetRatio = 0.28; // ana bloğun ~%28'i dinlenmedir
-  const mainMin = Math.max(6, Math.round(mainBlock * (1 - restBudgetRatio))); // hareketlere ayrılan aktif süre
+  const restBudgetRatio = 0.28;
+  const mainMin = Math.max(6, Math.round(mainBlock * (1 - restBudgetRatio)));
 
-  // 2. Kategori ağırlıkları — gölge sabit yüksek, diğerleri güne göre rotasyon
-  // Gün tohumuna göre 3 farklı tema: torba günü / kondisyon günü / kuvvet+ayak günü
-  const theme = daySeed % 3;
-  // temel ağırlıklar (gölge her zaman var)
+  // 2. Kategori ağırlıkları
+  const theme = daySeed % 3; // gün teması (subtitle'da da kullanılır)
+  const focusIds = focusCats ? Object.keys(focusCats) : [];
   let weights;
-  if (theme === 0) {        // Torba/teknik günü
-    weights = { shadow: 0.28, bag: 0.30, footwork: 0.14, cardio: 0.14, strength: 0.14 };
-  } else if (theme === 1) { // Kondisyon günü
-    weights = { shadow: 0.24, cardio: 0.30, footwork: 0.18, bag: 0.16, strength: 0.12 };
-  } else {                  // Kuvvet + ayak günü
-    weights = { shadow: 0.24, strength: 0.28, footwork: 0.22, bag: 0.14, cardio: 0.12 };
+  if (focusIds.length > 0) {
+    // KULLANICI KATEGORİ SEÇTİ: yoğunluğa göre ağırlık (az=1, orta=2, yoğun=3)
+    const intensityVal = { low: 1, mid: 2, high: 3 };
+    const raw = {};
+    let sum = 0;
+    focusIds.forEach(id => { const v = intensityVal[focusCats[id]] || 2; raw[id] = v; sum += v; });
+    weights = {};
+    focusIds.forEach(id => { weights[id] = raw[id] / sum; }); // normalize: toplam 1
+  } else {
+    // Otomatik denge — gün tohumuna göre 3 tema
+    if (theme === 0) {
+      weights = { shadow: 0.28, bag: 0.30, footwork: 0.14, cardio: 0.14, strength: 0.14 };
+    } else if (theme === 1) {
+      weights = { shadow: 0.24, cardio: 0.30, footwork: 0.18, bag: 0.16, strength: 0.12 };
+    } else {
+      weights = { shadow: 0.24, strength: 0.28, footwork: 0.22, bag: 0.14, cardio: 0.12 };
+    }
+    // HEDEFE göre ince ayar (sadece otomatik dengede)
+    if (goal === "goalFit") { weights.cardio += 0.08; weights.strength += 0.02; weights.bag -= 0.05; weights.footwork -= 0.05; }
+    else if (goal === "goalSkill") { weights.shadow += 0.06; weights.footwork += 0.06; weights.strength -= 0.06; weights.cardio -= 0.06; }
+    else if (goal === "goalCompete") { weights.bag += 0.06; weights.shadow += 0.04; weights.strength -= 0.05; weights.cardio -= 0.05; }
+    else if (goal === "goalStress") { weights.bag += 0.07; weights.cardio += 0.04; weights.strength -= 0.06; weights.footwork -= 0.05; }
+    Object.keys(weights).forEach(k => { if (weights[k] < 0.05) weights[k] = 0.05; });
   }
-  // 2b. HEDEFE göre ince ayar (profilden gelir): istenen kategoriyi artır, dengeyi koru
-  if (goal === "goalFit") {        // form/kilo → kondisyon ağırlığı
-    weights.cardio += 0.08; weights.strength += 0.02; weights.bag -= 0.05; weights.footwork -= 0.05;
-  } else if (goal === "goalSkill") { // teknik → gölge + ayak
-    weights.shadow += 0.06; weights.footwork += 0.06; weights.strength -= 0.06; weights.cardio -= 0.06;
-  } else if (goal === "goalCompete") { // müsabaka → torba + gölge yoğun
-    weights.bag += 0.06; weights.shadow += 0.04; weights.strength -= 0.05; weights.cardio -= 0.05;
-  } else if (goal === "goalStress") { // stres → torba (boşalma) + kondisyon
-    weights.bag += 0.07; weights.cardio += 0.04; weights.strength -= 0.06; weights.footwork -= 0.05;
-  }
-  // negatife düşmesin
-  Object.keys(weights).forEach(k => { if (weights[k] < 0.05) weights[k] = 0.05; });
 
-  // 3. Her kategoriye süre ata, round sayısına çevir [round ~ kategori dakikası / ortalama hareket süresi]
-  const order = ["footwork", "shadow", "bag", "strength", "cardio"]; // antrenör sırası temelli
+  // 3. Her kategoriye süre ata
+  const order = ["footwork", "shadow", "bag", "strength", "cardio"];
   const phases = [];
+  // Bir hareketin "kapanış/pekiştirme" hareketi olup olmadığı (sona gelmeli)
+  const isClosingMove = (nm) => /serbest|teknik gölge|karışık|kombinasyon akış|free|technical shadow|flow|freestyle/i.test(nm || "");
   order.forEach(catId => {
     const w = weights[catId]; if (!w) return;
     const catMin = Math.max(2, Math.round(mainMin * w));
     const pool = poolForCategory(catId, equipment, level);
     if (pool.length === 0) return;
     const c = CATEGORIES.find(x => x.id === catId);
-    // hareket seç: süreye göre 1-3 hareket, her birine round
-    const exCount = catMin >= 12 ? 2 : 1;
+    // Hareket sayısı: süreye göre çeşitlilik. ~her 5-6 dk için 1 hareket, min 1, en çok havuz kadar.
+    // Tek harekete max ~6 dk binsin diye: exCount = ceil(catMin / 6), ama en az 2 (süre uygunsa).
+    let exCount = Math.max(1, Math.ceil(catMin / 6));
+    if (catMin >= 8) exCount = Math.max(2, exCount); // 8 dk+ ise en az 2 farklı hareket
+    exCount = Math.min(exCount, pool.length); // havuzdan fazla olamaz
+
+    // Hareket seç: havuzun veri sırasını KORU (temelden zora dizili), rastgele karıştırma.
+    // Kapanış hareketlerini (serbest/teknik) ayır, sona ekle.
+    let base = pool.filter(ex => !isClosingMove(lang === "en" ? ex.nameEn : ex.name));
+    const closers = pool.filter(ex => isClosingMove(lang === "en" ? ex.nameEn : ex.name));
+    // ÇAYLAK öğretici sıralama: önce duruş/guard, sonra tek jab, sonra jab-cross (1-2), sonra gerisi.
+    if (level === "beginner") {
+      const teachPri = (nm) => {
+        const n = (nm || "").toLowerCase();
+        if (/duruş|guard|stance/.test(n)) return 0;
+        if (/jab/.test(n) && !/cross/.test(n) && !/1-2/.test(n) && !/1-1/.test(n)) return 1;
+        if (/1-2|jab-cross|jab cross/.test(n)) return 2;
+        return 3;
+      };
+      base = [...base].sort((a, b) => teachPri(lang === "en" ? a.nameEn : a.name) - teachPri(lang === "en" ? b.nameEn : b.name));
+    }
+    // Gün tohumuna göre başlangıç noktası kaydır (çaylakta sıra bozulmasın diye 0'dan başla)
+    const startIdx = (level !== "beginner" && base.length > exCount) ? (daySeed % (base.length - exCount + 1)) : 0;
     const chosen = [];
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < exCount && i < shuffled.length; i++) chosen.push(shuffled[i]);
+    // En temel hareketi (ilk eleman) çaylakta her zaman başa koy
+    if (level === "beginner" && base.length > 0) chosen.push(base[0]);
+    for (let i = 0; i < base.length && chosen.length < exCount; i++) {
+      const idx = startIdx + i;
+      if (idx < base.length && !chosen.includes(base[idx])) chosen.push(base[idx]);
+    }
+    // Hâlâ yer varsa baştan tamamla
+    for (let i = 0; i < base.length && chosen.length < exCount; i++) {
+      if (!chosen.includes(base[i])) chosen.push(base[i]);
+    }
+    // Son hareket olarak bir kapanış hareketi ekle (süre 8dk+ ve kapanış varsa)
+    if (catMin >= 8 && closers.length > 0 && chosen.length >= 1) {
+      chosen.push(closers[daySeed % closers.length]);
+    }
+
     const perExMin = Math.max(2, Math.round(catMin / chosen.length));
     const exercises = chosen.map(ex => {
-      // round = kategori süresi / hareketin tek tur süresi (yaklaşık)
       const dm = (ex.duration || "3 dk").match(/(\d+)\s*dk/);
       const sm = (ex.duration || "").match(/(\d+)\s*sn/);
       const perRound = dm ? parseInt(dm[1]) : (sm ? parseInt(sm[1]) / 60 : 3);
-      const rounds = Math.max(1, Math.min(12, Math.round(perExMin / Math.max(0.5, perRound))));
+      const rounds = Math.max(1, Math.min(8, Math.round(perExMin / Math.max(0.5, perRound))));
       return {
         name: lang === "en" ? ex.nameEn : ex.name,
+        nameEn: ex.nameEn,
+        video: ex.video,
         sets: applyRounds(ex.sets, rounds),
         duration: applyRoundsToDuration(ex.duration, rounds),
         desc: lang === "en" ? ex.descEn : ex.desc,
+        met: ex.met, hedefKas: ex.hedefKas, rest: ex.rest,
       };
     });
     phases.push({ name: `${c.icon} ${catLabel(c, lang)}`, color: c.color, _catId: catId, duration: `${catMin} dk`, exercises });
@@ -2330,9 +2697,12 @@ function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal) {
     { name: lang==="en"?"Full-body stretch":"Tam vücut esneme", sets: null, duration: `${Math.floor(coolMin/2)||1} dk`, desc: lang==="en"?"Hold each 30-40 s.":"Her bölgede 30-40 sn." },
   ]};
 
+  const themeLabel = (focusIds.length > 0)
+    ? focusIds.map(id => { const cc = CATEGORIES.find(x => x.id === id); return cc ? catLabel(cc, lang) : id; }).join(" + ")
+    : (lang === "en" ? ["Bag/Technique","Cardio","Strength+Footwork"][theme] : ["Torba/Teknik","Kondisyon","Kuvvet+Ayak"][theme]);
   return {
     title: lang === "en" ? "Auto War Plan" : "Otomatik Savaş Planı",
-    subtitle: `${totalMin} ${t.rounds3 === "rounds" ? "min" : "dk"} · ${["Torba/Teknik","Kondisyon","Kuvvet+Ayak"][theme]}`,
+    subtitle: `${totalMin} ${lang === "en" ? "min" : "dk"} · ${themeLabel}`,
     totalTime: `${totalMin} dk`,
     phases: [warm, ...phases, cool],
   };
@@ -2894,6 +3264,13 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
   const [totalMin, setTotalMin] = useState(45);
   const [program, setProgram] = useState(null);
   const [limitHit, setLimitHit] = useState(false); // ücretsiz günlük limit aşıldı mı
+  const [focusCats, setFocusCats] = useState({}); // {} = dengeli; {bag:'high', cardio:'low'} = seçili+yoğunluk
+  const toggleFocus = (id) => setFocusCats(prev => {
+    const next = { ...prev };
+    if (next[id]) delete next[id]; else next[id] = "mid"; // seçince varsayılan orta
+    return next;
+  });
+  const setIntensity = (id, level) => setFocusCats(prev => ({ ...prev, [id]: level }));
   const goal = prof && prof.goal; // hedefe göre kişiselleştirme
   const isPremium = loadPremium();
 
@@ -2911,7 +3288,7 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
     return (
       <div>
         <button onClick={() => setProgram(null)} style={{ background: "none", border: "none", color: RED, fontSize: 13, cursor: "pointer", marginBottom: 16, fontWeight: 700, padding: 0 }}>‹ {t.back}</button>
-        <ProgramDisplay program={program} accentColor={RED} lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} onComplete={onWorkoutComplete} />
+        <ProgramDisplay program={program} accentColor={RED} lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} onComplete={onWorkoutComplete} equipment={equipment} level={level} />
       </div>
     );
   }
@@ -2948,8 +3325,40 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
         </div>
       </div>
 
-      <div style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}33`, borderRadius: 10, padding: 12, marginBottom: 20 }}>
-        <div style={{ color: "#aaa", fontSize: 11.5, lineHeight: 1.5 }}>💡 {t.autoNote}</div>
+      {/* Neye odaklanmak istersin — kategori + yoğunluk seçimi */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ color: "#555", fontSize: 10, letterSpacing: 2, marginBottom: 6, fontWeight: 700 }}>{t.focusTitle.toUpperCase()}</div>
+        <div style={{ color: "#777", fontSize: 11, lineHeight: 1.4, marginBottom: 10 }}>{t.focusHint}</div>
+        {/* Dengeli (hepsi) */}
+        <button onClick={() => setFocusCats({})}
+          style={{ background: Object.keys(focusCats).length === 0 ? RED : CARD, color: Object.keys(focusCats).length === 0 ? "#fff" : "#888", border: `1.5px solid ${Object.keys(focusCats).length === 0 ? RED : LINE}`, borderRadius: 10, padding: "9px 13px", fontSize: 12.5, fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
+          ⚖️ {t.focusAll}
+        </button>
+        {/* Kategoriler — her biri seçilince altında Az/Orta/Yoğun çıkar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {VISIBLE_CATEGORIES.map(c => {
+            const on = !!focusCats[c.id];
+            const lvl = focusCats[c.id];
+            return (
+              <div key={c.id} style={{ background: on ? `${c.color}11` : "transparent", border: `1.5px solid ${on ? c.color : LINE}`, borderRadius: 12, padding: on ? "10px 12px" : "0" }}>
+                <button onClick={() => toggleFocus(c.id)}
+                  style={{ width: "100%", background: "transparent", color: on ? "#fff" : "#888", border: on ? "none" : `1.5px solid ${LINE}`, borderRadius: on ? 0 : 10, padding: on ? "0 0 8px 0" : "11px 13px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-start" }}>
+                  <span>{c.icon}</span>{lang === "en" ? c.en : c.tr}{on && <span style={{ color: c.color, marginLeft: "auto" }}>✓</span>}
+                </button>
+                {on && (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {[["low", t.intLow], ["mid", t.intMid], ["high", t.intHigh]].map(([key, label]) => (
+                      <button key={key} onClick={() => setIntensity(c.id, key)}
+                        style={{ flex: 1, background: lvl === key ? c.color : CARD, color: lvl === key ? "#000" : "#999", border: `1px solid ${lvl === key ? c.color : LINE}`, borderRadius: 8, padding: "7px 4px", fontSize: 11.5, fontWeight: 800, cursor: "pointer" }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Ücretsiz limit uyarısı */}
@@ -2962,7 +3371,7 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
 
       <button onClick={() => {
           if (!canUseAuto()) { setLimitHit(true); return; }
-          const p = buildAutoProgram(totalMin, level, equipment, lang, new Date().getDate(), goal);
+          const p = buildAutoProgram(totalMin, level, equipment, lang, new Date().getDate(), goal, focusCats);
           if (!isPremium) bumpAutoGen();
           setProgram(p);
         }}
@@ -3031,7 +3440,7 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
 
   // Havuzdan EKLE — her tıklama yeni bir blok ekler (aynı hareket tekrar eklenebilir)
   const addEx = (catId, ex, rounds) => {
-    setPlan(prev => [...prev, { uid: nextUid(), catId, ex, rounds: rounds || defaultRounds(ex) }]);
+    setPlan(prev => [...prev, { uid: nextUid(), catId, ex, rounds: rounds || defaultRounds(ex), roundMin: defaultRoundMin(ex), restSec: 45 }]);
     setViewing(false);
   };
   // Bloğu kaldır (uid ile — sadece o bloğu)
@@ -3039,6 +3448,16 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
   // Bir bloğun round sayısını değiştir
   const setBlockRounds = (uid, rounds) => {
     setPlan(prev => prev.map(b => b.uid === uid ? { ...b, rounds } : b));
+    setViewing(false);
+  };
+  // Bir bloğun round süresini (dk) değiştir
+  const setBlockRoundMin = (uid, roundMin) => {
+    setPlan(prev => prev.map(b => b.uid === uid ? { ...b, roundMin } : b));
+    setViewing(false);
+  };
+  // Bir bloğun dinlenme süresini (sn) değiştir
+  const setBlockRest = (uid, restSec) => {
+    setPlan(prev => prev.map(b => b.uid === uid ? { ...b, restSec } : b));
     setViewing(false);
   };
 
@@ -3051,12 +3470,21 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
     const orderedCatIds = Object.keys(byCat).sort((a, b) => (CATEGORY_ORDER[a] || 99) - (CATEGORY_ORDER[b] || 99));
     const mainPhases = orderedCatIds.map(catId => {
       const c = CATEGORIES.find(x => x.id === catId);
-      const exercises = byCat[catId].map(block => ({
-        name: lang === "en" ? block.ex.nameEn : block.ex.name,
-        sets: applyRounds(block.ex.sets, block.rounds), // etikette gösterim
-        duration: applyRoundsToDuration(block.ex.duration, block.rounds), // playlist round'u buradan okur
-        desc: lang === "en" ? block.ex.descEn : block.ex.desc,
-      }));
+      const exercises = byCat[catId].map(block => {
+        const rm = block.roundMin || defaultRoundMin(block.ex);
+        const isDesc = isDescendingReps(block.ex.sets);
+        // Azalan tekrar (şınav vb.) ise süre/dinlenme dokunma; aksi halde kullanıcının seçtiği süreyi uygula
+        const durStr = isDesc ? block.ex.duration : `${block.rounds}x${rm} dk`;
+        return {
+          name: lang === "en" ? block.ex.nameEn : block.ex.name,
+          nameEn: block.ex.nameEn,
+          video: block.ex.video,
+          sets: isDesc ? block.ex.sets : `${block.rounds}x${rm} dk`,
+          duration: durStr, // playlist round sayısını ve süresini buradan okur
+          desc: lang === "en" ? block.ex.descEn : block.ex.desc,
+          rest: (typeof block.restSec === "number") ? block.restSec : undefined, // round arası dinlenme (sn)
+        };
+      });
       const totalRounds = byCat[catId].reduce((s, b) => s + (b.rounds || 1), 0);
       return {
         name: `${c.icon} ${catLabel(c, lang)}`, color: c.color, _catId: catId,
@@ -3147,14 +3575,12 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
           <div style={{ color: c.color, fontSize: 11, letterSpacing: 2, fontWeight: 800, marginBottom: 6 }}>{catLabel(c, lang).toUpperCase()}</div>
           <div style={{ color: "#fff", fontSize: 21, fontWeight: 900, lineHeight: 1.2, marginBottom: 8 }}>{lang === "en" ? quick.ex.nameEn : quick.ex.name}</div>
           {(lang === "en" ? quick.ex.descEn : quick.ex.desc) && <div style={{ color: "#999", fontSize: 13, lineHeight: 1.5 }}>{lang === "en" ? quick.ex.descEn : quick.ex.desc}</div>}
-          {/* Çaylak seviyede: temel tekniği bilmeyenler için video arama linki (telifsiz — sadece arama açar) */}
-          {level === "beginner" && (
-            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent((quick.ex.nameEn || quick.ex.name) + " boxing technique tutorial")}`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ display: "inline-block", marginTop: 14, background: "#ffffff0d", border: `1px solid ${c.color}55`, color: c.color, borderRadius: 10, padding: "9px 16px", fontSize: 12.5, fontWeight: 800, textDecoration: "none" }}>
-              {t.watchHow}
-            </a>
-          )}
+          {/* Her seviyede: hareketi bilmeyenler için video linki */}
+          <a href={moveVideoUrl(quick.ex, lang)}
+            target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-block", marginTop: 14, background: "#ffffff0d", border: `1px solid ${c.color}55`, color: c.color, borderRadius: 10, padding: "9px 16px", fontSize: 12.5, fontWeight: 800, textDecoration: "none" }}>
+            {t.watchHow}
+          </a>
         </div>
 
         {isDescendingReps(quick.ex.sets) ? (
@@ -3172,34 +3598,14 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
             <div style={{ color: "#666", fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>{lang === "en" ? "Each set has fewer reps — push hard early, finish strong." : "Her set daha az tekrar — başta zorla, güçlü bitir."}</div>
           </div>
         ) : (
-          <>
-        <div style={{ color: "#888", fontSize: 12, fontWeight: 700, textAlign: "center", marginBottom: 14 }}>{t.selectRounds}</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginBottom: 10 }}>
-          <button onClick={() => setQuickRounds(r => Math.max(1, r - 1))}
-            style={{ width: 56, height: 56, borderRadius: 16, border: `2px solid ${c.color}66`, background: "transparent", color: c.color, fontSize: 28, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>−</button>
-          <div style={{ textAlign: "center", minWidth: 90 }}>
-            <div style={{ color: "#fff", fontSize: 56, fontWeight: 900, lineHeight: 1 }}>{quickRounds}</div>
-            <div style={{ color: c.color, fontSize: 12, fontWeight: 700, letterSpacing: 1 }}>{t.rounds3}</div>
+          <div style={{ color: "#666", fontSize: 12.5, textAlign: "center", lineHeight: 1.5, marginBottom: 20, background: `${c.color}10`, border: `1px solid ${c.color}33`, borderRadius: 12, padding: 14 }}>
+            {lang === "en" ? "Add it to your plan, then set rounds, length and rest below." : "Plana ekle, sonra aşağıda round, süre ve dinlenmeyi ayarla."}
           </div>
-          <button onClick={() => setQuickRounds(r => Math.min(12, r + 1))}
-            style={{ width: 56, height: 56, borderRadius: 16, border: `2px solid ${c.color}66`, background: "transparent", color: c.color, fontSize: 28, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>+</button>
-        </div>
-        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 20 }}>
-          {[3, 5, 8, 12].map(r => (
-            <button key={r} onClick={() => setQuickRounds(r)}
-              style={{ background: quickRounds === r ? c.color : "#1a1a1a", color: quickRounds === r ? "#000" : "#777", border: "none", borderRadius: 8, padding: "6px 16px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>{r}</button>
-          ))}
-        </div>
-          </>
         )}
 
-        <div style={{ textAlign: "center", color: "#666", fontSize: 12, marginBottom: 20 }}>
-          ⏱ {t.estTime}: <span style={{ color: "#aaa", fontWeight: 700 }}>~{est} dk</span>
-        </div>
-
-        <button onClick={() => { addEx(quick.catId, quick.ex, quickRounds); setQuick(null); }}
+        <button onClick={() => { addEx(quick.catId, quick.ex, defaultRounds(quick.ex)); setQuick(null); }}
           style={{ width: "100%", padding: "18px", borderRadius: 16, border: "none", background: `linear-gradient(135deg, ${c.color}, ${GOLD})`, color: "#000", fontSize: 17, fontWeight: 900, cursor: "pointer", letterSpacing: 1, boxShadow: `0 6px 24px ${c.color}55` }}>
-          + {t.addToPlan} ({quickRounds} {t.rounds3})
+          + {t.addToPlan}
         </button>
       </div>
     );
@@ -3211,7 +3617,7 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
     return (
       <div>
         <button onClick={() => setViewing(false)} style={{ background: "none", border: "none", color: RED, fontSize: 13, cursor: "pointer", marginBottom: 16, display: "flex", alignItems: "center", gap: 5, padding: 0, fontWeight: 700 }}>‹ {t.back}</button>
-        <ProgramDisplay program={program} accentColor={accent} lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} onComplete={onWorkoutComplete} />
+        <ProgramDisplay program={program} accentColor={accent} lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} onComplete={onWorkoutComplete} equipment={equipment} level={level} />
       </div>
     );
   }
@@ -3353,7 +3759,7 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
                     <button onClick={() => removeBlock(block.uid)} style={{ background: "none", border: "none", color: "#888", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
                   </div>
                   {/* Hareket bazlı round seçici (1-12) */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: isDescendingReps(block.ex.sets) ? 0 : 7 }}>
                     <span style={{ color: "#888", fontSize: 10, fontWeight: 700, letterSpacing: 1, minWidth: 48 }}>{t.roundLabel}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
                       <button onClick={() => setBlockRounds(block.uid, Math.max(1, block.rounds - 1))}
@@ -3364,6 +3770,34 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
                       <span style={{ color: "#666", fontSize: 11, marginLeft: 2 }}>{t.rounds3}</span>
                     </div>
                   </div>
+                  {/* Süre (dk/round) ve dinlenme (sn) — azalan tekrar hareketlerinde gizli */}
+                  {!isDescendingReps(block.ex.sets) && (
+                    <>
+                      {/* Round süresi */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+                        <span style={{ color: "#888", fontSize: 10, fontWeight: 700, letterSpacing: 1, minWidth: 48 }}>{t.roundMinLabel}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+                          <button onClick={() => setBlockRoundMin(block.uid, Math.max(1, (block.roundMin || defaultRoundMin(block.ex)) - 1))}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${c.color}55`, background: "transparent", color: c.color, fontSize: 18, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>−</button>
+                          <div style={{ minWidth: 38, textAlign: "center", color: "#fff", fontSize: 15, fontWeight: 900 }}>{block.roundMin || defaultRoundMin(block.ex)}</div>
+                          <button onClick={() => setBlockRoundMin(block.uid, Math.min(15, (block.roundMin || defaultRoundMin(block.ex)) + 1))}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${c.color}55`, background: "transparent", color: c.color, fontSize: 18, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>+</button>
+                          <span style={{ color: "#666", fontSize: 11, marginLeft: 2 }}>{t.perRoundShort}</span>
+                        </div>
+                      </div>
+                      {/* Dinlenme süresi */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: "#888", fontSize: 10, fontWeight: 700, letterSpacing: 1, minWidth: 48 }}>{t.restLabel}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+                          <button onClick={() => setBlockRest(block.uid, Math.max(0, (typeof block.restSec === "number" ? block.restSec : 45) - 15))}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${c.color}55`, background: "transparent", color: c.color, fontSize: 18, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>−</button>
+                          <div style={{ minWidth: 52, textAlign: "center", color: "#fff", fontSize: 14, fontWeight: 900 }}>{(typeof block.restSec === "number" ? block.restSec : 45) === 0 ? t.noRest : `${(typeof block.restSec === "number" ? block.restSec : 45)} sn`}</div>
+                          <button onClick={() => setBlockRest(block.uid, Math.min(120, (typeof block.restSec === "number" ? block.restSec : 45) + 15))}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${c.color}55`, background: "transparent", color: c.color, fontSize: 18, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>+</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -3401,7 +3835,7 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
                     <div style={{ width: 24, height: 24, borderRadius: 6, background: c.color, border: "none", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, color: "#000", fontWeight: 900, marginTop: 1 }}>▶</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ color: count > 0 ? "#fff" : "#ddd", fontSize: 12.5, fontWeight: 700 }}>
-                        {lang === "en" ? ex.nameEn : ex.name} {ex.sets && <span style={{ color: c.color, fontWeight: 600 }}>· {ex.sets}</span>}
+                        {lang === "en" ? ex.nameEn : ex.name}
                         {count > 0 && <span style={{ background: c.color, color: "#000", fontSize: 10, fontWeight: 900, padding: "1px 7px", borderRadius: 10, marginLeft: 6 }}>×{count}</span>}
                       </div>
                       {(lang === "en" ? ex.descEn : ex.desc) && <div style={{ color: "#555", fontSize: 10.5, marginTop: 2, lineHeight: 1.4 }}>{lang === "en" ? ex.descEn : ex.desc}</div>}
@@ -3640,10 +4074,10 @@ function AppInner() {
 
   const tabs = [
     { id: "week", icon: "📅", label: t.tabPlan },
-    { id: "build", icon: "🥊", label: t.tabBuild },
-    { id: "auto", icon: "⚡", label: t.tabAuto },
-    { id: "run", icon: "🏃", label: t.tabRun },
+    { id: "train", icon: "🥊", label: t.tabTrain },
   ];
+  // Antrenman Zamanı içindeki alt seçim: null=menü, 'build'/'auto'/'run'=o ekran
+  const [trainMode, setTrainMode] = useState(null);
 
   const saveProfileAndClose = (p) => { saveProfile(p); setProfile(p); setShowProfile(false); if (!tourSeen()) setShowTour(true); };
   // Koşu kaydedildiğinde: puan/kemer ekle (günlüğe RunningMode zaten yazdı)
@@ -3728,18 +4162,44 @@ function AppInner() {
 
         <div style={{ display: "flex", gap: 6, background: CARD, borderRadius: 14, padding: 5 }}>
           {tabs.map(tb => (
-            <button key={tb.id} onClick={() => setTab(tb.id)} style={{ flex: 1, background: tab === tb.id ? RED : "transparent", color: tab === tb.id ? "#fff" : "#666", border: "none", borderRadius: 10, padding: "11px 4px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <button key={tb.id} onClick={() => { setTab(tb.id); if (tb.id !== "train") setTrainMode(null); }} style={{ flex: 1, background: tab === tb.id ? RED : "transparent", color: tab === tb.id ? "#fff" : "#666", border: "none", borderRadius: 10, padding: "11px 4px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 16 }}>{tb.icon}</span><span>{tb.label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div key={tab} className="tab-content" style={{ padding: "20px 20px 80px" }}>
+      <div key={tab + (trainMode || "")} className="tab-content" style={{ padding: "20px 20px 80px" }}>
         {tab === "week" && <TrainingJournal lang={lang} />}
-        {tab === "build" && <ProgramPicker lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
-        {tab === "auto" && <AutoProgram lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
-        {tab === "run" && <RunningMode lang={lang} onSaved={onRunSaved} />}
+        {tab === "train" && !trainMode && (
+          <div>
+            <div style={{ color: "#fff", fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{t.tabTrain}</div>
+            <div style={{ color: "#888", fontSize: 13, marginBottom: 20 }}>{t.trainPickTitle}</div>
+            {[
+              { id: "build", icon: "🥊", label: t.tabBuild, desc: t.trainBuildDesc, color: RED },
+              { id: "auto", icon: "⚡", label: t.tabAuto, desc: t.trainAutoDesc, color: GOLD },
+              { id: "run", icon: "🏃", label: t.tabRun, desc: t.trainRunDesc, color: "#10b981" },
+            ].map(opt => (
+              <button key={opt.id} onClick={() => setTrainMode(opt.id)}
+                style={{ width: "100%", textAlign: "left", background: CARD, border: `1px solid ${LINE}`, borderLeft: `4px solid ${opt.color}`, borderRadius: 14, padding: "18px 16px", marginBottom: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 30 }}>{opt.icon}</span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: "block", color: "#fff", fontSize: 16, fontWeight: 800, marginBottom: 3 }}>{opt.label}</span>
+                  <span style={{ display: "block", color: "#888", fontSize: 12, lineHeight: 1.4 }}>{opt.desc}</span>
+                </span>
+                <span style={{ color: opt.color, fontSize: 20, fontWeight: 800 }}>›</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {tab === "train" && trainMode && (
+          <div>
+            <button onClick={() => setTrainMode(null)} style={{ background: "transparent", border: "none", color: "#888", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 14, padding: 0 }}>{t.trainBack}</button>
+            {trainMode === "build" && <ProgramPicker lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
+            {trainMode === "auto" && <AutoProgram lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
+            {trainMode === "run" && <RunningMode lang={lang} onSaved={onRunSaved} />}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3776,13 +4236,17 @@ function App() {
   );
 }
 
-// Uygulamayı başlat
-const rootEl = document.getElementById("root");
-const root = ReactDOM.createRoot(rootEl);
-root.render(<App />);
-// Yükleme ekranını kaldır
-const ld = document.getElementById("loader");
-if (ld) setTimeout(() => { ld.style.opacity = "0"; ld.style.transition = "opacity 0.4s"; setTimeout(() => ld.remove(), 400); }, 300);
+
+// Babel derlemesi bitince boot ekranini kaldir ve uygulamayi mount et.
+const __rootEl = document.getElementById('root');
+const __root = ReactDOM.createRoot(__rootEl);
+__root.render(React.createElement(App));
+const __boot = document.getElementById('boot');
+if (__boot) {
+  __boot.style.transition = 'opacity 0.35s ease';
+  __boot.style.opacity = '0';
+  setTimeout(() => __boot.remove(), 380);
+}
 </script>
 </body>
 </html>
