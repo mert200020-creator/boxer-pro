@@ -2079,7 +2079,7 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
             animation: `neonPulse ${left <= 10 ? 0.5 : 0.9}s ease-in-out infinite` }} />
         </>
       )}
-      <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "calc(env(safe-area-inset-top) + 12px) 20px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={onExit} style={{ background: CARD, border: `1px solid ${LINE}`, color: "#888", borderRadius: 10, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>✕ {t.exit}</button>
         {/* State Machine faz rozeti */}
         <span style={{ background: phase === "FIGHT" ? `${RED}22` : phase === "REST" ? "#3b82f622" : phase === "WARMUP" ? "#eab30822" : "#88888822",
@@ -2169,7 +2169,7 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
         </div>
       )}
 
-      <div style={{ padding: "0 20px 28px", display: "flex", gap: 10 }}>
+      <div style={{ padding: "0 20px calc(env(safe-area-inset-bottom) + 22px)", display: "flex", gap: 10 }}>
         {step?.timed ? (
           <button onClick={() => { haptic(HAPTIC.tap); setStarted(true); if (coachOn) primeSpeech(); if (left === 0) { goNext(); return; } const w = !running; setRunning(w); if (w && idx === 0 && left === step.seconds && soundOn) playDong(); }}
             style={{ flex: 1, background: running ? "#1e1e1e" : col, color: running ? "#fff" : "#000", border: "none", borderRadius: 16, padding: "18px", fontSize: 17, fontWeight: 900, cursor: "pointer", letterSpacing: 1 }}>
@@ -2446,13 +2446,13 @@ function SplashScreen({ onStart, lang, setLang }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 200, maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Gerçek boks fotoğrafı arka plan */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${SPLASH_BG})`, backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
-      {/* Karbon-siyah gradyan — yazıların okunabilmesi için */}
+      <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${SPLASH_BG})`, backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, filter: "blur(1.5px) brightness(0.92)", transform: "scale(1.06)" }} />
+      {/* Hafif film grain hissi + okunabilirlik için karbon-siyah gradyan */}
       <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, rgba(10,10,12,0.55) 0%, rgba(10,10,12,0.35) 35%, rgba(10,10,12,0.85) 75%, ${BG} 100%)`, zIndex: 1 }} />
       <div style={{ position: "absolute", top: "10%", left: "-20%", width: 280, height: 280, background: RED, opacity: 0.18, borderRadius: "50%", filter: "blur(70px)", zIndex: 1 }} />
       <div style={{ position: "absolute", bottom: "18%", right: "-15%", width: 240, height: 240, background: GOLD, opacity: 0.12, borderRadius: "50%", filter: "blur(70px)", zIndex: 1 }} />
 
-      <div style={{ display: "flex", justifyContent: "flex-end", padding: "16px 20px 0", position: "relative", zIndex: 3 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "calc(env(safe-area-inset-top) + 14px) 20px 0", position: "relative", zIndex: 3 }}>
         <LangToggle lang={lang} setLang={setLang} />
       </div>
 
@@ -4123,7 +4123,7 @@ function AppInner() {
           <button onClick={() => setBeltUnlock(null)} style={{ background: `linear-gradient(135deg, ${beltUnlock.color}, ${GOLD})`, color: "#000", border: "none", borderRadius: 14, padding: "14px 40px", fontSize: 15, fontWeight: 900, cursor: "pointer", letterSpacing: 1 }}>{t.beltContinue}</button>
         </div>
       )}
-      <div style={{ padding: "24px 20px 0", background: `linear-gradient(180deg, #15050a 0%, ${BG} 100%)` }}>
+      <div style={{ padding: "calc(env(safe-area-inset-top) + 20px) 20px 0", background: `linear-gradient(180deg, #15050a 0%, ${BG} 100%)` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
           <div>
             <div style={{ fontSize: 10, color: RED, letterSpacing: 4, fontWeight: 900, marginBottom: 6 }}>{t.appTitle}</div>
