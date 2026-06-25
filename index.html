@@ -999,6 +999,32 @@ function personalRecords() {
   return { totalWorkouts, totalMin, totalKcal, longestMin, bestKcal, bestStreak };
 }
 
+// ─── Başarımlar (rozetler) — personalRecords + puan verisinden hesaplanır ─────
+const ACHIEVEMENTS = [
+  { id: "first",       icon: "👣", metric: "totalWorkouts", goal: 1,     color: "#10b981", tr: "İlk Adım",          en: "First Step",        dtr: "İlk antrenmanını tamamla",          den: "Complete your first workout" },
+  { id: "w10",         icon: "🥊", metric: "totalWorkouts", goal: 10,    color: "#3b82f6", tr: "Düzenli Dövüşçü",   en: "Regular Fighter",   dtr: "10 antrenman tamamla",               den: "Complete 10 workouts" },
+  { id: "w50",         icon: "🔥", metric: "totalWorkouts", goal: 50,    color: "#f97316", tr: "Demir İrade",       en: "Iron Will",         dtr: "50 antrenman tamamla",               den: "Complete 50 workouts" },
+  { id: "w100",        icon: "💯", metric: "totalWorkouts", goal: 100,   color: GOLD,      tr: "Yüz Savaş",         en: "Hundred Battles",   dtr: "100 antrenman tamamla",              den: "Complete 100 workouts" },
+  { id: "streak3",     icon: "⚡", metric: "bestStreak",    goal: 3,     color: "#a855f7", tr: "Üç Gün Üst Üste",   en: "Three in a Row",    dtr: "3 gün arka arkaya çalış",            den: "Train 3 days in a row" },
+  { id: "streak7",     icon: "📅", metric: "bestStreak",    goal: 7,     color: "#06b6d4", tr: "Haftalık Disiplin", en: "Weekly Discipline", dtr: "7 gün arka arkaya çalış",            den: "Train 7 days in a row" },
+  { id: "streak30",    icon: "🏆", metric: "bestStreak",    goal: 30,    color: GOLD,      tr: "Ay Boyu Çelik",     en: "Steel Month",       dtr: "30 gün arka arkaya çalış",           den: "Train 30 days in a row" },
+  { id: "kcal1k",      icon: "🔥", metric: "totalKcal",     goal: 1000,  color: "#f97316", tr: "Yakıcı",            en: "Burner",            dtr: "Toplam 1.000 kalori yak",            den: "Burn 1,000 total calories" },
+  { id: "kcal10k",     icon: "🌋", metric: "totalKcal",     goal: 10000, color: RED,       tr: "Volkan",            en: "Volcano",           dtr: "Toplam 10.000 kalori yak",           den: "Burn 10,000 total calories" },
+  { id: "min600",      icon: "⏱️", metric: "totalMin",      goal: 600,   color: "#10b981", tr: "On Saat Ter",       en: "Ten Hours",         dtr: "Toplam 600 dakika çalış",            den: "Train 600 total minutes" },
+  { id: "long60",      icon: "🐉", metric: "longestMin",    goal: 60,    color: "#3b82f6", tr: "Maraton Round",     en: "Marathon Round",    dtr: "Tek seferde 60+ dakika çalış",       den: "Train 60+ min in one session" },
+  { id: "burn500",     icon: "💥", metric: "bestKcal",      goal: 500,   color: GOLD,      tr: "Tek Seansta Yangın",en: "Single Inferno",    dtr: "Tek antrenmanda 500+ kalori yak",    den: "Burn 500+ kcal in one workout" },
+];
+function computeAchievements() {
+  const r = personalRecords();
+  return ACHIEVEMENTS.map(a => {
+    const cur = r[a.metric] || 0;
+    return { ...a, current: cur, unlocked: cur >= a.goal, pct: Math.min(100, Math.round((cur / a.goal) * 100)) };
+  });
+}
+const ACH_SEEN_KEY = "boxerpro_ach_seen_v1";
+function loadSeenAch() { if (typeof window === "undefined") return []; try { return JSON.parse(window.localStorage.getItem(ACH_SEEN_KEY) || "[]"); } catch { return []; } }
+function markSeenAch(ids) { try { window.localStorage.setItem(ACH_SEEN_KEY, JSON.stringify(ids)); } catch {} }
+
 // Kategori dağılımı (tüm zamanlar) — en çok çalışılan
 function categoryBreakdown() {
   const counts = {};
@@ -1397,7 +1423,7 @@ const MASTER_POOL = {
 function poolForCategory(catId, equipment, level) {
   const list = MASTER_POOL[catId] || [];
   return list.filter(ex => {
-    if (level && ex.level !== level) return false;
+    if (level && level !== "mix" && ex.level !== level) return false; // "mix" → tüm seviyeler
     if (!ex.equip || ex.equip.length === 0) return true; // bodyweight her zaman
     return ex.equip.some(e => equipment.includes(e));
   });
@@ -2956,7 +2982,9 @@ function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focus
     ? focusIds.map(id => { const cc = CATEGORIES.find(x => x.id === id); return cc ? catLabel(cc, lang) : id; }).join(" + ")
     : (lang === "en" ? ["Bag/Technique","Cardio","Strength+Footwork"][theme] : ["Torba/Teknik","Kondisyon","Kuvvet+Ayak"][theme]);
 
-  // 5. SÜREYİ HEDEFE OTURT: gerçek oynatma süresini (work+rest) ölç, fazlaysa kırp.
+  // 5. SÜREYİ HEDEFE TAM OTURT: gerçek oynatma süresini (work+rest) ölç,
+  //    fazlaysa ana bloktan kır, azsa round ekle, kalan farkı soğumanın son
+  //    hareketine SANİYE hassasiyetinde yazarak seçilen süreyi birebir tuttur.
   const measureSec = (phs) => {
     const pl = buildPlaylist({ phases: phs }, null, t);
     let sec = 0;
@@ -2965,17 +2993,21 @@ function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focus
   };
   let allPhases = [warm, ...phases, cool];
   const targetSec = totalMin * 60;
+  const stretchEx = cool.exercises[cool.exercises.length - 1]; // soğumanın son hareketi (ince ayar)
+  const STRETCH_MIN = 20, STRETCH_MAX = 300; // soğuma ince ayar sınırları (sn)
+  const stretchSecOf = () => { const tm = parseExerciseTiming(stretchEx); return tm.perSet ? tm.sets * tm.perSet : 0; };
+  const neededStretch = () => targetSec - (measureSec(allPhases) - stretchSecOf());
+
   let guard = 0;
-  while (measureSec(allPhases) > targetSec * 1.04 && guard++ < 80) {
+  // (a) Çok fazlaysa: esneme minimumdayken bile hedef aşılıyorsa ana bloktan kır
+  while (neededStretch() < STRETCH_MIN && guard++ < 120) {
     const mains = allPhases.filter(p => p !== warm && p !== cool && (p.exercises || []).length);
     if (!mains.length) break;
-    // En çok süre tutan ana fazı bul
     let big = mains[0], bigSec = -1;
     mains.forEach(p => { const s = measureSec([p]); if (s > bigSec) { bigSec = s; big = p; } });
     if (big.exercises.length > 1) {
-      big.exercises.pop(); // o fazdaki son (genelde daha zor) hareketi çıkar
+      big.exercises.pop();
     } else {
-      // Tek hareket kaldı: çok round'luysa azalt, değilse fazı tamamen çıkar
       const ex = big.exercises[0];
       const m = (ex.sets || "").match(/(\d+)x(\d+)\s*(dk|sn)/);
       if (m && parseInt(m[1]) > 1) {
@@ -2987,6 +3019,25 @@ function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focus
       }
     }
   }
+  // (b) Çok azsa (esneme tek başına > STRETCH_MAX kapatacaksa): ana teknik harekete round ekle
+  let fillGuard = 0;
+  while (neededStretch() > STRETCH_MAX && fillGuard++ < 40) {
+    const mains = allPhases.filter(p => p !== warm && p !== cool && (p.exercises || []).length);
+    let tgt = null;
+    for (const p of mains) { for (const ex of p.exercises) { const m = (ex.sets || "").match(/(\d+)x(\d+)\s*dk/); if (m && parseInt(m[1]) < 8) { tgt = { ex, m }; break; } } if (tgt) break; }
+    if (!tgt) break;
+    const nr = parseInt(tgt.m[1]) + 1;
+    tgt.ex.sets = `${nr}x${tgt.m[2]} dk`;
+    if ((tgt.ex.duration || "").includes("x")) tgt.ex.duration = `${nr}x${tgt.m[2]} dk`;
+  }
+  // (c) Kalan farkı soğumanın son hareketine saniye olarak yaz → toplam = seçilen süre
+  const fill = Math.max(STRETCH_MIN, Math.min(STRETCH_MAX, neededStretch()));
+  stretchEx.duration = `${fill} sn`;
+  stretchEx.sets = null;
+  // Soğuma faz başlığındaki toplam dakikayı da güncelle (görsel tutarlılık)
+  const coolTotalSec = cool.exercises.reduce((s, ex) => { const tm = parseExerciseTiming(ex); return s + (tm.perSet ? tm.sets * tm.perSet : 0); }, 0);
+  cool.duration = `${Math.max(1, Math.round(coolTotalSec / 60))} dk`;
+
   const finalMin = Math.max(1, Math.round(measureSec(allPhases) / 60));
 
   return {
@@ -3004,10 +3055,10 @@ function MoveLibrary({ lang }) {
   const [catFilter, setCatFilter] = useState("all");
   const [openId, setOpenId] = useState(null);
 
-  // Tüm hareketleri tek listede topla (kategori + seviye bilgisiyle)
+  // Tüm hareketleri tek listede topla (kategori + seviye bilgisiyle) — gizli kategoriler dahil hepsi
   const allMoves = useMemo(() => {
     const out = [];
-    VISIBLE_CATEGORIES.forEach(c => {
+    CATEGORIES.forEach(c => {
       (MASTER_POOL[c.id] || []).forEach((ex, i) => {
         out.push({ ...ex, catId: c.id, _key: `${c.id}_${i}` });
       });
@@ -3024,7 +3075,7 @@ function MoveLibrary({ lang }) {
   });
 
   // Kategoriye göre grupla (sıra: VISIBLE_CATEGORIES)
-  const grouped = VISIBLE_CATEGORIES.map(c => ({
+  const grouped = CATEGORIES.map(c => ({
     cat: c,
     moves: filtered.filter(m => m.catId === c.id),
   })).filter(g => g.moves.length > 0);
@@ -3049,7 +3100,7 @@ function MoveLibrary({ lang }) {
       {/* Kategori filtresi */}
       <div style={{ display: "flex", gap: 7, overflowX: "auto", paddingBottom: 8, marginBottom: 6 }}>
         <button onClick={() => setCatFilter("all")} style={{ flexShrink: 0, background: catFilter === "all" ? RED : CARD, color: catFilter === "all" ? "#fff" : "#999", border: `1px solid ${catFilter === "all" ? RED : LINE}`, borderRadius: 20, padding: "7px 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>{lang === "en" ? "All" : "Hepsi"}</button>
-        {VISIBLE_CATEGORIES.map(c => (
+        {CATEGORIES.map(c => (
           <button key={c.id} onClick={() => setCatFilter(c.id)} style={{ flexShrink: 0, background: catFilter === c.id ? c.color : CARD, color: catFilter === c.id ? "#000" : "#999", border: `1px solid ${catFilter === c.id ? c.color : LINE}`, borderRadius: 20, padding: "7px 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>{c.icon} {catLabel(c, lang)}</button>
         ))}
       </div>
@@ -3528,6 +3579,51 @@ function TrainingJournal({ lang, onStartFirst }) {
         );
       })()}
 
+      {/* Başarımlar (rozetler) */}
+      {entries.length > 0 && (() => {
+        const achs = computeAchievements();
+        const unlockedIds = achs.filter(a => a.unlocked).map(a => a.id);
+        const seen = loadSeenAch();
+        const fresh = achs.filter(a => a.unlocked && !seen.includes(a.id));
+        if (unlockedIds.length) markSeenAch(unlockedIds);
+        const unlockedCount = unlockedIds.length;
+        return (
+          <div style={{ marginBottom: 18 }}>
+            {fresh.length > 0 && (
+              <div style={{ background: `linear-gradient(135deg, ${GOLD}22, ${CARD})`, border: `1px solid ${GOLD}`, borderRadius: 14, padding: "12px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 24 }}>🎉</span>
+                <div>
+                  <div style={{ color: GOLD, fontSize: 12.5, fontWeight: 900 }}>{lang === "en" ? "New achievement!" : "Yeni başarım!"}</div>
+                  <div style={{ color: "#ddd", fontSize: 12, fontWeight: 600 }}>{fresh.map(a => `${a.icon} ${lang === "en" ? a.en : a.tr}`).join(" · ")}</div>
+                </div>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ color: "#555", fontSize: 10, letterSpacing: 3, fontWeight: 700 }}>🏆 {lang === "en" ? "ACHIEVEMENTS" : "BAŞARIMLAR"}</div>
+              <div style={{ color: GOLD, fontSize: 11, fontWeight: 800 }}>{unlockedCount}/{achs.length}</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {achs.map(a => (
+                <div key={a.id} style={{ background: a.unlocked ? `${a.color}18` : CARD, border: `1px solid ${a.unlocked ? a.color + "66" : LINE}`, borderRadius: 12, padding: "12px 8px", textAlign: "center", position: "relative", opacity: a.unlocked ? 1 : 0.62 }}>
+                  <div style={{ fontSize: 24, marginBottom: 5, filter: a.unlocked ? "none" : "grayscale(1)" }}>{a.unlocked ? a.icon : "🔒"}</div>
+                  <div style={{ color: a.unlocked ? "#fff" : "#888", fontSize: 10.5, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{lang === "en" ? a.en : a.tr}</div>
+                  {a.unlocked ? (
+                    <div style={{ color: a.color, fontSize: 9, fontWeight: 800, letterSpacing: 0.3 }}>{lang === "en" ? "UNLOCKED" : "AÇILDI"}</div>
+                  ) : (
+                    <>
+                      <div style={{ height: 4, background: "#1a1a1f", borderRadius: 2, overflow: "hidden", margin: "4px 2px 3px" }}>
+                        <div style={{ height: "100%", width: `${a.pct}%`, background: a.color, borderRadius: 2 }} />
+                      </div>
+                      <div style={{ color: "#666", fontSize: 8.5, fontWeight: 700 }}>{a.current}/{a.goal}</div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Aylık kayıt listesi */}
       <div style={{ color: "#555", fontSize: 10, letterSpacing: 3, marginBottom: 10, fontWeight: 700 }}>{t.monthList}</div>
       {yearEntries.length === 0 ? (
@@ -3831,7 +3927,11 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
               {l.icon} {lang === "en" ? l.en : l.tr}
             </button>
           ))}
+          <button onClick={() => setLevel("mix")} style={{ flex: 1, background: level === "mix" ? `${GOLD}25` : CARD, color: level === "mix" ? GOLD : "#666", border: `1.5px solid ${level === "mix" ? GOLD : LINE}`, borderRadius: 10, padding: "10px 4px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+            🔀 {lang === "en" ? "MIX" : "KARMA"}
+          </button>
         </div>
+        {level === "mix" && <div style={{ color: "#888", fontSize: 11, lineHeight: 1.4, marginTop: 8 }}>{lang === "en" ? "Mixes Rookie, Rising and Pro moves together." : "Çaylak, Yükseliş ve Pro hareketlerini bir arada karıştırır."}</div>}
       </div>
 
       {/* Toplam süre seçimi */}
@@ -3843,6 +3943,9 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
               {fmtDur(m)}
             </button>
           ))}
+        </div>
+        <div style={{ color: "#666", fontSize: 11, lineHeight: 1.4, marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <span>ℹ️</span><span>{lang === "en" ? "Selected duration includes rest periods — the total matches exactly. You can fine-tune rest or exercise durations via the Edit button." : "Seçtiğiniz süre dinlenmeler dahildir — toplam birebir bu kadar olur. Düzenle'ye basarak dinlenme veya antrenman sürelerini ayarlayabilirsiniz."}</span>
         </div>
       </div>
 
@@ -4154,8 +4257,10 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
           {LEVELS.map(l => (
             <button key={l.id} onClick={() => { setLevel(l.id); }} style={{ flex: 1, background: level === l.id ? l.color : CARD, color: level === l.id ? "#000" : "#666", border: `1px solid ${level === l.id ? l.color : LINE}`, borderRadius: 12, padding: "10px 4px", fontSize: 11, fontWeight: 900, cursor: "pointer" }}>{l.icon} {lang === "en" ? l.en : l.tr}</button>
           ))}
+          <button onClick={() => setLevel("mix")} style={{ flex: 1, background: level === "mix" ? GOLD : CARD, color: level === "mix" ? "#000" : "#666", border: `1px solid ${level === "mix" ? GOLD : LINE}`, borderRadius: 12, padding: "10px 4px", fontSize: 11, fontWeight: 900, cursor: "pointer" }}>🔀 {lang === "en" ? "MIX" : "KARMA"}</button>
         </div>
         {level === "pro" && <div style={{ marginTop: 8, color: "#888", fontSize: 11, textAlign: "center", background: "#ffffff08", borderRadius: 8, padding: "6px 10px" }}>⚫ {t.proHint}</div>}
+        {level === "mix" && <div style={{ marginTop: 8, color: "#888", fontSize: 11, textAlign: "center", background: `${GOLD}10`, borderRadius: 8, padding: "6px 10px" }}>🔀 {lang === "en" ? "All levels' moves are listed — combine freely." : "Tüm seviyelerin hareketleri listelenir — istediğin gibi birleştir."}</div>}
       </div>
 
       {/* Mod seçimi */}
@@ -4357,6 +4462,7 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
                     <div style={{ flex: 1 }}>
                       <div style={{ color: count > 0 ? "#fff" : "#ddd", fontSize: 12.5, fontWeight: 700 }}>
                         {lang === "en" ? ex.nameEn : ex.name}
+                        {level === "mix" && (() => { const lo = LEVELS.find(l => l.id === ex.level) || LEVELS[0]; return <span style={{ background: `${lo.color}22`, color: lo.color, fontSize: 8.5, fontWeight: 900, padding: "1px 6px", borderRadius: 5, marginLeft: 6, letterSpacing: 0.3 }}>{lang === "en" ? lo.en : lo.tr}</span>; })()}
                         {count > 0 && <span style={{ background: c.color, color: "#000", fontSize: 10, fontWeight: 900, padding: "1px 7px", borderRadius: 10, marginLeft: 6 }}>×{count}</span>}
                       </div>
                       {(lang === "en" ? ex.descEn : ex.desc) && <div style={{ color: "#555", fontSize: 10.5, marginTop: 2, lineHeight: 1.4 }}>{lang === "en" ? ex.descEn : ex.desc}</div>}
@@ -4596,8 +4702,8 @@ function AppInner() {
 
   const tabs = [
     { id: "week", icon: "📅", label: t.tabPlan },
-    { id: "train", icon: "🥊", label: t.tabTrain },
     { id: "library", icon: "📚", label: lang === "en" ? "Moves" : "Hareketler" },
+    { id: "train", icon: "🥊", label: t.tabTrain },
   ];
   // Antrenman Zamanı içindeki alt seçim: null=menü, 'build'/'auto'/'run'=o ekran
   const [trainMode, setTrainMode] = useState(null);
