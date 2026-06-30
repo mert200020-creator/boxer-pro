@@ -32,7 +32,14 @@
   #boot .ttl { color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 2px; }
   #boot .sub { color: #FF3333; font-size: 11px; font-weight: 800; letter-spacing: 4px; }
   @keyframes bootPulse { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.12); opacity: 1; } }
-  ::-webkit-scrollbar { width: 0; background: transparent; }
+  ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+  /* Genel cila: sekme geçişinde yumuşak giriş + butonlarda dokunma hissi */
+  .tab-content { animation: fadeUp 0.30s cubic-bezier(0.16,1,0.3,1) both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  button { transition: transform 0.08s ease, filter 0.15s ease, opacity 0.15s ease; }
+  button:active { transform: scale(0.96); }
+  /* Yatay kart şeritlerinde kaydırma akıcı olsun */
+  div[style*="overflow-x: auto"], div[style*="overflowX"] { -webkit-overflow-scrolling: touch; }
 </style>
 </head>
 <body>
@@ -497,11 +504,13 @@ const T = {
     reminderUnsupported: "Bu cihazda/önizlemede bildirim yok. Gerçek uygulamada çalışır.",
     reminderBody: "Eldivenleri tak — bugünün antrenmanı seni bekliyor! 🥊",
     premiumTitle: "BOXER PRO Premium",
-    premiumDesc: "Uygulamayı destekle, tüm özelliklerin kilidini aç.",
-    premiumF1: "Sınırsız özel program",
-    premiumF2: "Detaylı ilerleme analizi",
-    premiumF3: "Reklamsız deneyim",
-    premiumF4: "Gelecek özelliklere erken erişim",
+    premiumDesc: "Uygulamayı destekle, tüm sınırları kaldır. Premium ile gelenler:",
+    premiumF1: "⚡ Sınırsız otomatik program (günlük limit yok)",
+    premiumF2: "📊 Detaylı ilerleme grafikleri ve analiz",
+    premiumF3: "⭐ Sınırsız favori program kaydetme",
+    premiumF4: "🎬 Tüm hareketlere kendi videonu ekleme",
+    premiumF5: "🚫 Reklamsız, kesintisiz deneyim",
+    premiumF6: "🎁 Yeni özelliklere erken erişim + geliştiriciyi destekle",
     premiumCta: "Premium'a Geç",
     premiumActive: "✓ Premium Aktif",
     premiumRestore: "Satın almayı geri yükle",
@@ -710,11 +719,13 @@ const T = {
     reminderUnsupported: "Notifications unavailable here/in preview. Works in the real app.",
     reminderBody: "Glove up — today's workout is waiting! 🥊",
     premiumTitle: "BOXER PRO Premium",
-    premiumDesc: "Support the app, unlock everything.",
-    premiumF1: "Unlimited custom programs",
-    premiumF2: "Detailed progress analytics",
-    premiumF3: "Ad-free experience",
-    premiumF4: "Early access to new features",
+    premiumDesc: "Support the app, remove all limits. With Premium you get:",
+    premiumF1: "⚡ Unlimited auto programs (no daily limit)",
+    premiumF2: "📊 Detailed progress charts & analytics",
+    premiumF3: "⭐ Unlimited saved favorite programs",
+    premiumF4: "🎬 Add your own video to every move",
+    premiumF5: "🚫 Ad-free, uninterrupted experience",
+    premiumF6: "🎁 Early access to new features + support the dev",
     premiumCta: "Go Premium",
     premiumActive: "✓ Premium Active",
     premiumRestore: "Restore purchase",
@@ -1085,6 +1096,7 @@ function exportAllData() {
     version: 1, exportedAt: new Date().toISOString(),
     progress: loadProgress(), journal: loadJournal(), profile: loadProfile(),
     ghosts: loadGhosts(), weightLog: loadWeightLog(),
+    moveVideos: loadMoveVideos(), favorites: loadFavorites(),
   };
   return JSON.stringify(data, null, 2);
 }
@@ -1096,6 +1108,8 @@ function importAllData(json) {
     if (d.profile) window.localStorage.setItem(PROFILE_KEY, JSON.stringify(d.profile));
     if (d.ghosts) window.localStorage.setItem(GHOST_KEY, JSON.stringify(d.ghosts));
     if (d.weightLog) window.localStorage.setItem(WEIGHT_KEY, JSON.stringify(d.weightLog));
+    if (d.moveVideos) window.localStorage.setItem(MOVE_VIDEOS_KEY, JSON.stringify(d.moveVideos));
+    if (d.favorites) window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(d.favorites));
     return true;
   } catch { return false; }
 }
@@ -1572,12 +1586,102 @@ function humanizeSets(s, lang) {
   }
   return s;
 }
-// Hareket videosu linki: özel "video" alanı varsa onu, yoksa YouTube'da hareket adıyla arama açar.
+// ─── Hareket videoları ────────────────────────────────────────────────────────
+// Kullanıcı kendi videolarını uygulama içinden ekleyebilir (localStorage). Anahtar = hareket adı.
+const MOVE_VIDEOS_KEY = "boxerpro_move_videos_v1";
+function loadMoveVideos() {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(window.localStorage.getItem(MOVE_VIDEOS_KEY) || "{}"); } catch { return {}; }
+}
+function saveMoveVideo(name, url) {
+  const all = loadMoveVideos();
+  if (url) all[name] = url; else delete all[name];
+  try { window.localStorage.setItem(MOVE_VIDEOS_KEY, JSON.stringify(all)); } catch {}
+}
+// Bir hareket için kayıtlı video: önce kullanıcının eklediği, sonra koddaki video alanı.
+function getMoveVideo(ex) {
+  if (!ex) return null;
+  const custom = loadMoveVideos();
+  return custom[ex.name] || custom[ex.nameEn] || ex.video || null;
+}
+// Video URL'sini gömülebilir biçime çevir. { type: "youtube"|"file"|"link", src }
+function parseVideoUrl(url) {
+  if (!url) return null;
+  const u = url.trim();
+  // YouTube
+  let m = u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
+  if (m) return { type: "youtube", src: `https://www.youtube.com/embed/${m[1]}?rel=0&playsinline=1` };
+  // Doğrudan video dosyası
+  if (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(u)) return { type: "file", src: u };
+  return { type: "link", src: u };
+}
+
+// Hareket videosu linki: kayıtlı video varsa onu, yoksa YouTube'da hareket adıyla arama açar.
 function moveVideoUrl(ex, lang) {
-  if (ex && ex.video) return ex.video; // ileride elle eklenebilecek özel link
+  const v = getMoveVideo(ex);
+  if (v) return v;
   const name = (lang === "en" ? (ex.nameEn || ex.name) : ex.name) || "";
   const q = encodeURIComponent((lang === "en" ? name + " boxing technique" : name + " boks tekniği"));
   return `https://www.youtube.com/results?search_query=${q}`;
+}
+
+// Gömülü video oynatıcı + (isteğe bağlı) uygulama içi video ekleme/değiştirme
+function VideoBlock({ ex, lang, color, allowEdit }) {
+  const c = color || RED;
+  const [vid, setVid] = useState(() => getMoveVideo(ex));
+  const [open, setOpen] = useState(false);
+  const parsed = parseVideoUrl(vid);
+  const addOrEdit = () => {
+    const cur = getMoveVideo(ex) || "";
+    const url = window.prompt(lang === "en" ? "Paste video link (YouTube or .mp4):" : "Video linkini yapıştır (YouTube veya .mp4):", cur);
+    if (url === null) return;
+    saveMoveVideo(ex.name, url.trim());
+    setVid(url.trim() || null); setOpen(false);
+  };
+  const remove = () => {
+    if (!window.confirm(lang === "en" ? "Remove this video?" : "Bu videoyu kaldır?")) return;
+    saveMoveVideo(ex.name, ""); setVid(null); setOpen(false);
+  };
+
+  // Video varsa: gömülü oynat
+  if (vid && parsed && parsed.type !== "link") {
+    return (
+      <div style={{ marginTop: 10 }}>
+        {!open ? (
+          <button onClick={(e) => { e.stopPropagation(); setOpen(true); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: `${c}14`, border: `1px solid ${c}55`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", color: "#fff" }}>
+            <span style={{ width: 34, height: 34, borderRadius: "50%", background: c, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>▶</span>
+            <span style={{ fontSize: 13.5, fontWeight: 800, textAlign: "left", flex: 1 }}>{lang === "en" ? "Watch technique video" : "Teknik videosunu izle"}</span>
+            {allowEdit && <span onClick={(e) => { e.stopPropagation(); addOrEdit(); }} style={{ color: "#888", fontSize: 11, fontWeight: 700, padding: "4px 6px" }}>✏️</span>}
+          </button>
+        ) : (
+          <div onClick={(e) => e.stopPropagation()}>
+            <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 12, overflow: "hidden", background: "#000" }}>
+              {parsed.type === "youtube" ? (
+                <iframe src={parsed.src} title="video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
+              ) : (
+                <video src={parsed.src} controls playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", background: "#000" }} />
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, color: "#999", borderRadius: 10, padding: "9px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>{lang === "en" ? "Close" : "Kapat"}</button>
+              {allowEdit && <button onClick={(e) => { e.stopPropagation(); addOrEdit(); }} style={{ background: CARD, border: `1px solid ${LINE}`, color: "#999", borderRadius: 10, padding: "9px 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>✏️ {lang === "en" ? "Change" : "Değiştir"}</button>}
+              {allowEdit && <button onClick={(e) => { e.stopPropagation(); remove(); }} style={{ background: "transparent", border: `1px solid ${LINE}`, color: "#777", borderRadius: 10, padding: "9px 12px", fontSize: 12.5, cursor: "pointer" }}>🗑</button>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Video yok (veya sadece harici link): ekle butonu + YouTube arama
+  return (
+    <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {allowEdit && (
+        <button onClick={(e) => { e.stopPropagation(); addOrEdit(); }} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: `${c}14`, border: `1px dashed ${c}77`, color: c, borderRadius: 10, padding: "9px 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>➕ {lang === "en" ? "Add your video" : "Kendi videonu ekle"}</button>
+      )}
+      <a href={moveVideoUrl(ex, lang)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#999", fontSize: 12.5, fontWeight: 700, textDecoration: "none", border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 14px" }}>🔍 {lang === "en" ? "Search on YouTube" : "YouTube'da ara"}</a>
+    </div>
+  );
 }
 
 // ─── ANTRENÖR REHBERİ ─────────────────────────────────────────────────────────
@@ -2443,7 +2547,7 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
                 <span style={{ color: col, fontSize: 12, fontWeight: 700 }}>{step.hedefKas}</span>
               </div>
             )}
-            <a href={moveVideoUrl(step, lang)} target="_blank" rel="noopener noreferrer" style={{ display: "block", textAlign: "center", marginTop: 16, color: RED, fontSize: 14, fontWeight: 800, textDecoration: "none", border: `1px solid ${RED}55`, borderRadius: 12, padding: "12px" }}>{t.watchVideo}</a>
+            <VideoBlock ex={step} lang={lang} color={col} />
           </div>
         </div>
       )}
@@ -3136,7 +3240,7 @@ function MoveLibrary({ lang }) {
                 {open && ds && (
                   <div style={{ color: "#bbb", fontSize: 12.5, lineHeight: 1.6, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${LINE}` }}>
                     {ds}
-                    {m.video && <div style={{ marginTop: 8 }}><a href={m.video} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: g.cat.color, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>▶ {lang === "en" ? "Watch video" : "Videoyu izle"}</a></div>}
+                    <VideoBlock ex={m} lang={lang} color={g.cat.color} allowEdit />
                   </div>
                 )}
               </div>
@@ -3874,11 +3978,11 @@ function RunningMode({ lang, onSaved }) {
   );
 }
 
-function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equipment, onWorkoutComplete }) {
+function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equipment, onWorkoutComplete, initMin }) {
   const t = T[lang];
   const prof = loadProfile();
   const [level, setLevel] = useState(prof && prof.experience ? suggestedLevel(prof.experience) : "intermediate");
-  const [totalMin, setTotalMin] = useState(45);
+  const [totalMin, setTotalMin] = useState(initMin || 45);
   const [program, setProgram] = useState(null);
   const [limitHit, setLimitHit] = useState(false); // ücretsiz günlük limit aşıldı mı
   const [focusCats, setFocusCats] = useState({}); // {} = dengeli; {bag:'high', cardio:'low'} = seçili+yoğunluk
@@ -3936,15 +4040,24 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
 
       {/* Toplam süre seçimi */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ color: "#555", fontSize: 10, letterSpacing: 2, marginBottom: 10, fontWeight: 700 }}>{t.totalDuration}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-          {DURATIONS.map(m => (
-            <button key={m} onClick={() => setTotalMin(m)} style={{ background: totalMin === m ? RED : CARD, color: totalMin === m ? "#fff" : "#888", border: `1.5px solid ${totalMin === m ? RED : LINE}`, borderRadius: 10, padding: "12px 4px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-              {fmtDur(m)}
-            </button>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 16 }}>⏱️</span>
+          <span style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: 0.3 }}>{t.totalDuration}</span>
+          <span style={{ marginLeft: "auto", color: RED, fontSize: 14, fontWeight: 900 }}>{fmtDur(totalMin)}</span>
         </div>
-        <div style={{ color: "#666", fontSize: 11, lineHeight: 1.4, marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 9 }}>
+          {DURATIONS.map(m => {
+            const on = totalMin === m;
+            return (
+              <button key={m} onClick={() => setTotalMin(m)} style={{ position: "relative", overflow: "hidden", background: on ? `linear-gradient(150deg, ${RED}, #b91c1c)` : CARD, color: on ? "#fff" : "#aaa", border: `1.5px solid ${on ? RED : LINE}`, borderRadius: 14, padding: "16px 4px 12px", cursor: "pointer", boxShadow: on ? `0 6px 18px ${RED}44` : "none", transition: "all 0.15s" }}>
+                <div style={{ fontSize: 19, fontWeight: 900, lineHeight: 1 }}>{m >= 60 ? (m / 60 % 1 === 0 ? m / 60 : (m / 60).toFixed(1).replace(".0","")) : m}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, opacity: 0.85, marginTop: 3, letterSpacing: 0.3 }}>{m >= 60 ? (lang === "en" ? "hour" : "saat") : (lang === "en" ? "min" : "dakika")}</div>
+                {on && <div style={{ position: "absolute", top: 5, right: 6, fontSize: 10 }}>✓</div>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ color: "#666", fontSize: 11, lineHeight: 1.4, marginTop: 12, display: "flex", alignItems: "flex-start", gap: 6, background: "#ffffff06", borderRadius: 10, padding: "10px 12px" }}>
           <span>ℹ️</span><span>{lang === "en" ? "Selected duration includes rest periods — the total matches exactly. You can fine-tune rest or exercise durations via the Edit button." : "Seçtiğiniz süre dinlenmeler dahildir — toplam birebir bu kadar olur. Düzenle'ye basarak dinlenme veya antrenman sürelerini ayarlayabilirsiniz."}</span>
         </div>
       </div>
@@ -4199,12 +4312,8 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
           <div style={{ color: c.color, fontSize: 11, letterSpacing: 2, fontWeight: 800, marginBottom: 6 }}>{catLabel(c, lang).toUpperCase()}</div>
           <div style={{ color: "#fff", fontSize: 21, fontWeight: 900, lineHeight: 1.2, marginBottom: 8 }}>{lang === "en" ? quick.ex.nameEn : quick.ex.name}</div>
           {(lang === "en" ? quick.ex.descEn : quick.ex.desc) && <div style={{ color: "#999", fontSize: 13, lineHeight: 1.5 }}>{lang === "en" ? quick.ex.descEn : quick.ex.desc}</div>}
-          {/* Her seviyede: hareketi bilmeyenler için video linki */}
-          <a href={moveVideoUrl(quick.ex, lang)}
-            target="_blank" rel="noopener noreferrer"
-            style={{ display: "inline-block", marginTop: 14, background: "#ffffff0d", border: `1px solid ${c.color}55`, color: c.color, borderRadius: 10, padding: "9px 16px", fontSize: 12.5, fontWeight: 800, textDecoration: "none" }}>
-            {t.watchHow}
-          </a>
+          {/* Hareket videosu: kendi videonu ekle / izle */}
+          <div style={{ marginTop: 6, textAlign: "left" }}><VideoBlock ex={quick.ex} lang={lang} color={c.color} allowEdit /></div>
         </div>
 
         {isDescendingReps(quick.ex.sets) ? (
@@ -4500,9 +4609,9 @@ function PremiumPanel({ lang }) {
       ) : (
         <>
           <div style={{ color: "#aaa", fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>{t.premiumDesc}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-            {[t.premiumF1, t.premiumF2, t.premiumF3, t.premiumF4].map((f, i) => (
-              <div key={i} style={{ color: "#ddd", fontSize: 13, display: "flex", alignItems: "center", gap: 9 }}><span style={{ color: GOLD, fontSize: 15 }}>✓</span>{f}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+            {[t.premiumF1, t.premiumF2, t.premiumF3, t.premiumF4, t.premiumF5, t.premiumF6].filter(Boolean).map((f, i) => (
+              <div key={i} style={{ color: "#eee", fontSize: 13.5, display: "flex", alignItems: "center", gap: 10, background: "#ffffff06", borderRadius: 10, padding: "11px 13px", fontWeight: 600 }}>{f}</div>
             ))}
           </div>
           <button onClick={buyPremium} style={{ width: "100%", padding: "15px", borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${GOLD}, #ffed4e)`, color: "#000", fontSize: 15, fontWeight: 900, cursor: "pointer", letterSpacing: 0.5 }}>{t.premiumCta}</button>
@@ -4648,7 +4757,7 @@ function AppInner() {
   const [profile, setProfile] = useState(null);
   const [showProfile, setShowProfile] = useState(false); // onboarding veya düzenleme
   const [showTour, setShowTour] = useState(false);
-  const [tab, setTab] = useState("week");
+  const [tab, setTab] = useState("home");
   const [showSettings, setShowSettings] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
@@ -4701,16 +4810,18 @@ function AppInner() {
   const t = T[lang];
 
   const tabs = [
-    { id: "week", icon: "📅", label: t.tabPlan },
-    { id: "library", icon: "📚", label: lang === "en" ? "Moves" : "Hareketler" },
-    { id: "train", icon: "🥊", label: t.tabTrain },
+    { id: "home", icon: "🏠", label: lang === "en" ? "Home" : "Ana", title: lang === "en" ? "Home" : "Ana Ekran" },
+    { id: "progress", icon: "📊", label: lang === "en" ? "Analysis" : "Analiz", title: lang === "en" ? "Personal Analysis" : "Kişisel Analiz" },
+    { id: "train", icon: "🥊", label: lang === "en" ? "Train" : "Antrenman", title: lang === "en" ? "Training Time" : "Antrenman Vakti" },
+    { id: "techniques", icon: "📚", label: lang === "en" ? "Moves" : "Teknik", title: lang === "en" ? "Techniques & Moves" : "Teknik ve Hareketler" },
+    { id: "more", icon: "⚙️", label: lang === "en" ? "Settings" : "Ayarlar", title: lang === "en" ? "Settings" : "Ayarlar" },
   ];
-  // Antrenman Zamanı içindeki alt seçim: null=menü, 'build'/'auto'/'run'=o ekran
-  const [trainMode, setTrainMode] = useState(null);
+  const [trainSub, setTrainSub] = useState("auto"); // Antrenman içi segment: auto/build/run
+  const [autoInitMin, setAutoInitMin] = useState(null); // Ana ekrandan seçilen hızlı süre
   const [favProgram, setFavProgram] = useState(null); // favoriden başlatılan program
   const [favs, setFavs] = useState(() => loadFavorites());
   const refreshFavs = () => setFavs(loadFavorites());
-  useEffect(() => { if (!trainMode) setFavs(loadFavorites()); }, [trainMode]);
+  useEffect(() => { if (tab === "home" && !favProgram) setFavs(loadFavorites()); }, [tab, favProgram]);
 
   const saveProfileAndClose = (p) => { saveProfile(p); setProfile(p); setShowProfile(false); if (!tourSeen()) setShowTour(true); };
   // Koşu kaydedildiğinde: puan/kemer ekle (günlüğe RunningMode zaten yazdı)
@@ -4764,20 +4875,6 @@ function AppInner() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
             <LangToggle lang={lang} setLang={setLang} />
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => { setShowPremium(s => !s); setShowEquipment(false); setShowSettings(false); }} aria-label={t.premiumShort} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, background: showPremium ? GOLD : `${GOLD}18`, border: `1px solid ${GOLD}`, color: showPremium ? "#000" : GOLD, borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontWeight: 800, minWidth: 50 }}>
-                <span style={{ fontSize: 15, lineHeight: 1 }}>⭐</span>
-                <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3 }}>{t.premiumShort}</span>
-              </button>
-              <button onClick={() => { setShowEquipment(s => !s); setShowSettings(false); setShowPremium(false); }} aria-label={t.equipShort} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, background: showEquipment ? GOLD : CARD, border: `1px solid ${showEquipment ? GOLD : LINE}`, color: showEquipment ? "#000" : "#999", borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontWeight: 700, minWidth: 50 }}>
-                <span style={{ fontSize: 15, lineHeight: 1 }}>🧰</span>
-                <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3 }}>{t.equipShort}</span>
-              </button>
-              <button onClick={() => { setShowSettings(s => !s); setShowEquipment(false); setShowPremium(false); }} aria-label={t.settings} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, background: showSettings ? RED : CARD, border: `1px solid ${showSettings ? RED : LINE}`, color: showSettings ? "#fff" : "#999", borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontWeight: 700, minWidth: 50 }}>
-                <span style={{ fontSize: 15, lineHeight: 1 }}>⚙</span>
-                <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3 }}>{t.settings}</span>
-              </button>
-            </div>
           </div>
         </div>
 
@@ -4792,83 +4889,173 @@ function AppInner() {
             <button onClick={() => setPenaltyNotice(null)} style={{ background: "none", border: "none", color: "#888", fontSize: 18, cursor: "pointer" }}>×</button>
           </div>
         )}
-        {<BeltBar points={progress.points} lang={lang} />}
-
-        {showPremium && <div className="tab-content"><PremiumPanel lang={lang} /></div>}
-
-        {showEquipment && <div className="tab-content"><EquipmentPanel lang={lang} equipment={equipment} toggleEquip={toggleEquip} /></div>}
-
-        {showSettings && (
-          <div className="tab-content"><SettingsPanel lang={lang} roundSec={roundSec} setRoundSec={setRoundSec} restSec={restSec} setRestSec={setRestSec} coachOn={coachOn} setCoachOn={setCoachOn} soundOn={soundOn} setSoundOn={setSoundOn} warnSec={warnSec} setWarnSec={setWarnSec} onEditProfile={() => { setShowSettings(false); setShowProfile(true); }} /></div>
-        )}
-
-        <div style={{ display: "flex", gap: 6, background: CARD, borderRadius: 14, padding: 5 }}>
-          {tabs.map(tb => (
-            <button key={tb.id} onClick={() => { setTab(tb.id); if (tb.id !== "train") setTrainMode(null); }} style={{ flex: 1, background: tab === tb.id ? RED : "transparent", color: tab === tb.id ? "#fff" : "#666", border: "none", borderRadius: 10, padding: "11px 4px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-              <span style={{ fontSize: 16 }}>{tb.icon}</span><span>{tb.label}</span>
-            </button>
-          ))}
-        </div>
+        {(tab === "home" || tab === "progress") && <BeltBar points={progress.points} lang={lang} />}
       </div>
 
-      <div key={tab + (trainMode || "")} className="tab-content" style={{ padding: "20px 20px 80px" }}>
-        {tab === "week" && <TrainingJournal lang={lang} onStartFirst={() => setTab("train")} />}
-        {tab === "library" && <MoveLibrary lang={lang} />}
-        {tab === "train" && !trainMode && (
-          <div>
-            <div style={{ color: "#fff", fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{t.tabTrain}</div>
-            <div style={{ color: "#888", fontSize: 13, marginBottom: 20 }}>{t.trainPickTitle}</div>
-            {[
-              { id: "build", icon: "🥊", label: t.tabBuild, desc: t.trainBuildDesc, color: RED },
-              { id: "auto", icon: "⚡", label: t.tabAuto, desc: t.trainAutoDesc, color: GOLD },
-              { id: "run", icon: "🏃", label: t.tabRun, desc: t.trainRunDesc, color: "#10b981" },
-            ].map(opt => (
-              <button key={opt.id} onClick={() => setTrainMode(opt.id)}
-                style={{ width: "100%", textAlign: "left", background: CARD, border: `1px solid ${LINE}`, borderLeft: `4px solid ${opt.color}`, borderRadius: 14, padding: "18px 16px", marginBottom: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ fontSize: 30 }}>{opt.icon}</span>
-                <span style={{ flex: 1 }}>
-                  <span style={{ display: "block", color: "#fff", fontSize: 16, fontWeight: 800, marginBottom: 3 }}>{opt.label}</span>
-                  <span style={{ display: "block", color: "#888", fontSize: 12, lineHeight: 1.4 }}>{opt.desc}</span>
-                </span>
-                <span style={{ color: opt.color, fontSize: 20, fontWeight: 800 }}>›</span>
-              </button>
-            ))}
-            {favs.length > 0 && (
-              <div style={{ marginTop: 22 }}>
-                <div style={{ color: "#555", fontSize: 10, letterSpacing: 3, marginBottom: 10, fontWeight: 700 }}>⭐ {lang === "en" ? "MY FAVORITES" : "FAVORİLERİM"}</div>
-                {favs.map(f => (
-                  <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${GOLD}33`, borderLeft: `4px solid ${GOLD}`, borderRadius: 14, padding: "14px 14px", marginBottom: 10 }}>
-                    <button onClick={() => { setFavProgram(f.program); setTrainMode("fav"); }} style={{ flex: 1, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                      <span style={{ display: "block", color: "#fff", fontSize: 15, fontWeight: 800, marginBottom: 3 }}>{f.label}</span>
-                      <span style={{ display: "block", color: "#888", fontSize: 12 }}>{f.program.subtitle || f.program.totalTime || ""}</span>
-                    </button>
-                    <button onClick={() => { setFavProgram(f.program); setTrainMode("fav"); }} style={{ background: GOLD, color: "#000", border: "none", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>▶</button>
-                    <button onClick={() => { if (window.confirm(lang === "en" ? "Remove this favorite?" : "Bu favoriyi sil?")) { removeFavorite(f.id); refreshFavs(); } }} aria-label={lang === "en" ? "Remove" : "Sil"} style={{ background: "transparent", color: "#777", border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 11px", fontSize: 13, cursor: "pointer" }}>🗑</button>
-                  </div>
+      <div key={tab + (favProgram ? "fav" : "") + (tab === "train" ? trainSub + (autoInitMin || "") : "")} className="tab-content" style={{ padding: "20px 20px calc(env(safe-area-inset-bottom) + 110px)" }}>
+        {!favProgram && (() => {
+          const accents = { home: RED, progress: "#3b82f6", train: "#f97316", techniques: "#a855f7", more: "#10b981" };
+          const ac = accents[tab] || RED;
+          const cur = tabs.find(x => x.id === tab) || {};
+          return (
+            <div style={{ position: "relative", marginBottom: 20 }}>
+              {/* Sayfaya özel yumuşak renk ışıması */}
+              <div style={{ position: "absolute", top: -30, left: -20, width: 200, height: 120, background: ac, opacity: 0.16, filter: "blur(60px)", borderRadius: "50%", pointerEvents: "none" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative" }}>
+                <span style={{ fontSize: 26, filter: `drop-shadow(0 0 12px ${ac}aa)` }}>{cur.icon}</span>
+                <span style={{ color: "#fff", fontSize: 25, fontWeight: 900, letterSpacing: -0.4 }}>{cur.title}</span>
+              </div>
+              <div style={{ width: 44, height: 4, background: ac, borderRadius: 2, marginTop: 10, boxShadow: `0 0 14px ${ac}` }} />
+            </div>
+          );
+        })()}
+        {/* ── ANA (Home): vitrin — çipler + yana kaydırılan kartlar ── */}
+        {tab === "home" && !favProgram && (() => {
+          const quickPresets = [
+            { min: 15, label: lang === "en" ? "Quick" : "Hızlı", sub: "15 dk", g1: "#ef4444", g2: "#b91c1c", icon: "⚡" },
+            { min: 30, label: lang === "en" ? "Standard" : "Standart", sub: "30 dk", g1: "#f59e0b", g2: "#b45309", icon: "🥊" },
+            { min: 45, label: lang === "en" ? "Full" : "Tam", sub: "45 dk", g1: "#8b5cf6", g2: "#6d28d9", icon: "🔥" },
+            { min: 60, label: lang === "en" ? "Pro" : "Pro", sub: "60 dk", g1: "#10b981", g2: "#047857", icon: "🏆" },
+          ];
+          const chip = (icon, label, onClick, gold) => (
+            <button onClick={onClick} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 7, background: CARD, border: `1px solid ${gold ? GOLD + "88" : LINE}`, color: gold ? GOLD : "#ddd", borderRadius: 22, padding: "10px 16px", fontSize: 13.5, fontWeight: 800, cursor: "pointer" }}>
+              <span style={{ fontSize: 15 }}>{icon}</span>{label}
+            </button>
+          );
+          return (
+            <div>
+              {/* Aksiyon çipleri (yatay kaydırma) */}
+              <div style={{ display: "flex", gap: 9, overflowX: "auto", paddingBottom: 6, marginBottom: 22, scrollbarWidth: "none" }}>
+                {chip("⭐", "Premium", () => setShowPremium(true), true)}
+                {chip("🎛", lang === "en" ? "Create" : "Kendin Kur", () => { setTrainSub("build"); setTab("train"); })}
+                {chip("🔖", lang === "en" ? "Favorites" : "Favoriler", () => { const el = document.getElementById("home-favs"); if (el) el.scrollIntoView({ behavior: "smooth" }); })}
+                {chip("📚", lang === "en" ? "Moves" : "Teknikler", () => setTab("techniques"))}
+              </div>
+
+              {/* SENİN İÇİN ÖNERİLEN */}
+              <div style={{ color: "#fff", fontSize: 16, fontWeight: 900, letterSpacing: 0.3, marginBottom: 4 }}>{lang === "en" ? "RECOMMENDED FOR YOU" : "SENİN İÇİN ÖNERİLEN"}</div>
+              <div style={{ color: "#777", fontSize: 12.5, lineHeight: 1.4, marginBottom: 14 }}>{lang === "en" ? "Based on your profile and what you've done so far." : "Profiline ve şimdiye kadar yaptıklarına göre."}</div>
+              <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 10, marginBottom: 26, scrollbarWidth: "none" }}>
+                {/* Büyük öneri kartı 1 */}
+                <button onClick={() => { setAutoInitMin(null); setTrainSub("auto"); setTab("train"); }} style={{ flexShrink: 0, width: 270, height: 188, borderRadius: 20, border: "none", cursor: "pointer", padding: 22, textAlign: "left", position: "relative", overflow: "hidden", background: `linear-gradient(150deg, ${RED}, #7f1d1d)`, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
+                  <div style={{ position: "absolute", right: -20, top: -10, fontSize: 130, opacity: 0.15 }}>🥊</div>
+                  <div style={{ color: "#fff", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative" }}>{lang === "en" ? "Find your next workout" : "Sıradaki antrenmanını bul"}</div>
+                  <div style={{ position: "absolute", left: 22, bottom: 22, display: "inline-flex", alignItems: "center", gap: 8, background: "#ffffff", color: "#111", borderRadius: 22, padding: "10px 16px", fontSize: 13, fontWeight: 900 }}>🔍 {lang === "en" ? "START" : "BAŞLA"}</div>
+                </button>
+                {/* Kart 2 — kondisyon/koşu */}
+                <button onClick={() => { setTrainSub("run"); setTab("train"); }} style={{ flexShrink: 0, width: 270, height: 188, borderRadius: 20, border: "none", cursor: "pointer", padding: 22, textAlign: "left", position: "relative", overflow: "hidden", background: "linear-gradient(150deg, #10b981, #064e3b)", boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
+                  <div style={{ position: "absolute", right: -15, top: -5, fontSize: 130, opacity: 0.15 }}>🏃</div>
+                  <div style={{ color: "#fff", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative" }}>{lang === "en" ? "Cardio & Running" : "Kondisyon & Koşu"}</div>
+                  <div style={{ position: "absolute", left: 22, bottom: 22, display: "inline-flex", alignItems: "center", gap: 8, background: "#ffffff", color: "#111", borderRadius: 22, padding: "10px 16px", fontSize: 13, fontWeight: 900 }}>▶ {lang === "en" ? "OPEN" : "AÇ"}</div>
+                </button>
+                {/* Kart 3 — başarımlar */}
+                <button onClick={() => setTab("progress")} style={{ flexShrink: 0, width: 270, height: 188, borderRadius: 20, border: "none", cursor: "pointer", padding: 22, textAlign: "left", position: "relative", overflow: "hidden", background: `linear-gradient(150deg, ${GOLD}, #92670a)`, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
+                  <div style={{ position: "absolute", right: -15, top: -5, fontSize: 130, opacity: 0.18 }}>🏆</div>
+                  <div style={{ color: "#1a1205", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative" }}>{lang === "en" ? "Your records & badges" : "Rekorların & rozetlerin"}</div>
+                  <div style={{ position: "absolute", left: 22, bottom: 22, display: "inline-flex", alignItems: "center", gap: 8, background: "#1a1205", color: GOLD, borderRadius: 22, padding: "10px 16px", fontSize: 13, fontWeight: 900 }}>📊 {lang === "en" ? "VIEW" : "GÖR"}</div>
+                </button>
+              </div>
+
+              {/* HIZLI ANTRENMANLAR */}
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+                <div style={{ color: "#fff", fontSize: 16, fontWeight: 900, letterSpacing: 0.3 }}>{lang === "en" ? "QUICK WORKOUTS" : "HIZLI ANTRENMANLAR"}</div>
+                <button onClick={() => { setAutoInitMin(null); setTrainSub("auto"); setTab("train"); }} style={{ background: "none", border: "none", color: "#888", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{lang === "en" ? "see all ›" : "tümü ›"}</button>
+              </div>
+              <div style={{ color: "#777", fontSize: 12.5, marginBottom: 14 }}>{lang === "en" ? "Tap a duration — we build it instantly." : "Bir süreye dokun — anında oluştururuz."}</div>
+              <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, marginBottom: 26, scrollbarWidth: "none" }}>
+                {quickPresets.map(p => (
+                  <button key={p.min} onClick={() => { setAutoInitMin(p.min); setTrainSub("auto"); setTab("train"); }} style={{ flexShrink: 0, width: 130, height: 150, borderRadius: 18, border: "none", cursor: "pointer", padding: 16, textAlign: "left", position: "relative", overflow: "hidden", background: `linear-gradient(155deg, ${p.g1}, ${p.g2})`, boxShadow: "0 8px 22px rgba(0,0,0,0.35)" }}>
+                    <div style={{ fontSize: 30 }}>{p.icon}</div>
+                    <div style={{ position: "absolute", left: 16, bottom: 30, color: "#fff", fontSize: 17, fontWeight: 900 }}>{p.label}</div>
+                    <div style={{ position: "absolute", left: 16, bottom: 12, color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 700 }}>{p.sub}</div>
+                  </button>
                 ))}
               </div>
-            )}
-          </div>
-        )}
-        {tab === "train" && trainMode === "fav" && favProgram && (
+
+              {/* FAVORİLER */}
+              {favs.length > 0 && (
+                <div id="home-favs">
+                  <div style={{ color: "#fff", fontSize: 16, fontWeight: 900, letterSpacing: 0.3, marginBottom: 14 }}>⭐ {lang === "en" ? "MY FAVORITES" : "FAVORİLERİM"}</div>
+                  {favs.map(f => (
+                    <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${GOLD}33`, borderLeft: `4px solid ${GOLD}`, borderRadius: 14, padding: "14px 14px", marginBottom: 10 }}>
+                      <button onClick={() => setFavProgram(f.program)} style={{ flex: 1, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        <span style={{ display: "block", color: "#fff", fontSize: 15, fontWeight: 800, marginBottom: 3 }}>{f.label}</span>
+                        <span style={{ display: "block", color: "#888", fontSize: 12 }}>{f.program.subtitle || f.program.totalTime || ""}</span>
+                      </button>
+                      <button onClick={() => setFavProgram(f.program)} style={{ background: GOLD, color: "#000", border: "none", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>▶</button>
+                      <button onClick={() => { if (window.confirm(lang === "en" ? "Remove this favorite?" : "Bu favoriyi sil?")) { removeFavorite(f.id); refreshFavs(); } }} aria-label={lang === "en" ? "Remove" : "Sil"} style={{ background: "transparent", color: "#777", border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 11px", fontSize: 13, cursor: "pointer" }}>🗑</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+        {tab === "home" && favProgram && (
           <div>
-            <button onClick={() => { setTrainMode(null); setFavProgram(null); }} style={{ background: "transparent", border: "none", color: "#888", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 14, padding: 0 }}>{t.trainBack}</button>
+            <button onClick={() => setFavProgram(null)} style={{ background: "transparent", border: "none", color: "#888", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 14, padding: 0 }}>{t.trainBack}</button>
             <ProgramDisplay program={favProgram} accentColor={RED} lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} onComplete={onWorkoutComplete} equipment={equipment} level={profile && profile.experience ? suggestedLevel(profile.experience) : "intermediate"} onSavedFav={refreshFavs} />
           </div>
         )}
-        {tab === "train" && trainMode && (
+
+        {/* ── İLERLEME (Progress) ── */}
+        {tab === "progress" && <TrainingJournal lang={lang} onStartFirst={() => { setTrainSub("auto"); setTab("train"); }} />}
+
+        {/* ── TEKNİKLER (Moves) ── */}
+        {tab === "techniques" && <MoveLibrary lang={lang} />}
+
+        {/* ── ANTRENMAN (Train): üstte segment geçişi ── */}
+        {tab === "train" && (
           <div>
-            <button onClick={() => setTrainMode(null)} style={{ background: "transparent", border: "none", color: "#888", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 14, padding: 0 }}>{t.trainBack}</button>
-            {trainMode === "build" && <ProgramPicker lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
-            {trainMode === "auto" && <AutoProgram lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
-            {trainMode === "run" && <RunningMode lang={lang} onSaved={onRunSaved} />}
+            <div style={{ display: "flex", gap: 6, background: CARD, borderRadius: 12, padding: 4, marginBottom: 18 }}>
+              {[{ id: "auto", icon: "⚡", label: lang === "en" ? "Auto" : "Otomatik" }, { id: "build", icon: "🥊", label: lang === "en" ? "Build" : "Kendin Kur" }, { id: "run", icon: "🏃", label: lang === "en" ? "Run" : "Koşu" }].map(sg => (
+                <button key={sg.id} onClick={() => setTrainSub(sg.id)} style={{ flex: 1, background: trainSub === sg.id ? RED : "transparent", color: trainSub === sg.id ? "#fff" : "#888", border: "none", borderRadius: 9, padding: "10px 4px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>{sg.icon} {sg.label}</button>
+              ))}
+            </div>
+            {trainSub === "auto" && <AutoProgram lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} initMin={autoInitMin} />}
+            {trainSub === "build" && <ProgramPicker lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
+            {trainSub === "run" && <RunningMode lang={lang} onSaved={onRunSaved} />}
           </div>
         )}
+
+        {/* ── AYARLAR (Settings): sadece ayarlarla ilgili ── */}
+        {tab === "more" && (
+          <div>
+            <EquipmentPanel lang={lang} equipment={equipment} toggleEquip={toggleEquip} />
+            <div style={{ height: 14 }} />
+            <SettingsPanel lang={lang} roundSec={roundSec} setRoundSec={setRoundSec} restSec={restSec} setRestSec={setRestSec} coachOn={coachOn} setCoachOn={setCoachOn} soundOn={soundOn} setSoundOn={setSoundOn} warnSec={warnSec} setWarnSec={setWarnSec} onEditProfile={() => setShowProfile(true)} />
+          </div>
+        )}
+      </div>
+
+      {/* Premium tam ekran açılır */}
+      {showPremium && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: BG, overflowY: "auto", maxWidth: 430, margin: "0 auto" }}>
+          <div style={{ padding: "calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 30px)" }}>
+            <button onClick={() => setShowPremium(false)} style={{ background: CARD, border: `1px solid ${LINE}`, color: "#aaa", borderRadius: 10, padding: "9px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>✕ {lang === "en" ? "Close" : "Kapat"}</button>
+            <PremiumPanel lang={lang} />
+          </div>
+        </div>
+      )}
+
+      {/* Sabit alt menü (fotoğraftaki gibi) */}
+      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 100, background: "rgba(16,16,20,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", borderTop: `1px solid ${LINE}`, padding: "8px 6px calc(env(safe-area-inset-bottom) + 8px)", maxWidth: 430, margin: "0 auto", display: "flex" }}>
+        {tabs.map(tb => {
+          const accents = { home: RED, progress: "#3b82f6", train: "#f97316", techniques: "#a855f7", more: "#10b981" };
+          const ac = accents[tb.id] || RED;
+          const active = tab === tb.id;
+          return (
+            <button key={tb.id} onClick={() => { setTab(tb.id); setFavProgram(null); }} style={{ flex: 1, background: "transparent", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 2px" }}>
+              <span style={{ fontSize: 21, lineHeight: 1, filter: active ? `drop-shadow(0 0 8px ${ac}aa)` : "grayscale(0.4)", opacity: active ? 1 : 0.55, transform: active ? "translateY(-1px)" : "none", transition: "all 0.2s" }}>{tb.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: active ? 900 : 700, color: active ? ac : "#777", letterSpacing: 0.2 }}>{tb.label}</span>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: active ? ac : "transparent", marginTop: 1 }} />
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
-
 // ─── Hata Sınırı (çökme koruması) ─────────────────────────────────────────────
 // Beklenmedik bir hata olursa tüm uygulama beyaz ekrana düşmesin; nazik bir
 // kurtarma ekranı göster. Bozuk veri vs. durumlarda kullanıcı uygulamadan atılmaz.
