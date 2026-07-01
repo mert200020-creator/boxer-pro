@@ -531,13 +531,15 @@ const T = {
     tourNext: "Devam",
     tourStart: "Başla! 🥊",
     tour1Title: "BOXER PRO'ya Hoş Geldin",
-    tour1Body: "Cebindeki köşe antrenörün. Gerçek boks hareketleriyle, sana özel programlarla çalış.",
-    tour2Title: "Programını Seç",
-    tour2Body: "Otomatik'te süreni seç, gerisini bize bırak. Ya da Kendin Kur'da kendi antrenmanını tasarla.",
-    tour3Title: "İlerlemeni Takip Et",
-    tour3Body: "Her antrenman günlüğe işlenir. Kalori, kilo, koşu mesafesi ve kemer rütbeleri seni motive eder.",
-    tour4Title: "Sesli Koç",
-    tour4Body: "Antrenman sırasında her hareketi sana sesli söyler. Telefonu cebine at, sadece çalış.",
+    tour1Body: "Cebindeki köşe antrenörün. 300'den fazla gerçek boks hareketi ve sana özel programlarla çalış.",
+    tour2Title: "Antrenman Vakti",
+    tour2Body: "Otomatik'te süreni seç, dengeli program anında hazır. Kendin Kur'da kendi antrenmanını tasarla. Timer'da ise kendi serbest çalışmanı yap.",
+    tour3Title: "Teknik ve Hareketler",
+    tour3Body: "300+ hareketlik kütüphaneyi gez ve ara. Kombinasyon rehberiyle '1-2-3' dilini öğren, her harekete kendi videonu ekle.",
+    tour4Title: "Kişisel Analiz",
+    tour4Body: "Her antrenman günlüğe işlenir. Kişisel rekorların, başarım rozetlerin ve haftalık hedeflerin seni motive eder.",
+    tour5Title: "Sesli Koç & Combo Çağırıcı",
+    tour5Body: "Antrenör sana sesli komut verir; Timer'da combo çağırıcı rastgele kombinasyon söyler. Telefonu cebine at, sadece çalış.",
     totalLabel: "Toplam",
     workMin: "antrenman", restMin: "dinlenme", totalMin2: "toplam",
     timeSplitLabel: "Süre Dağılımı",
@@ -746,13 +748,15 @@ const T = {
     tourNext: "Next",
     tourStart: "Start! 🥊",
     tour1Title: "Welcome to BOXER PRO",
-    tour1Body: "Your corner coach in your pocket. Train with real boxing moves and personalized programs.",
-    tour2Title: "Pick Your Program",
-    tour2Body: "In Auto, choose your time and let us handle the rest. Or design your own in Build.",
-    tour3Title: "Track Your Progress",
-    tour3Body: "Every workout is logged. Calories, weight, run distance and belt ranks keep you motivated.",
-    tour4Title: "Voice Coach",
-    tour4Body: "It calls out every move during training. Pocket your phone and just work.",
+    tour1Body: "Your corner coach in your pocket. Train with 300+ real boxing moves and personalized programs.",
+    tour2Title: "Training Time",
+    tour2Body: "In Auto pick your time and get a balanced program instantly. Build your own, or use the Timer for free-form training.",
+    tour3Title: "Techniques & Moves",
+    tour3Body: "Browse and search a 300+ move library. Learn the '1-2-3' language with the combo guide, and add your own video to any move.",
+    tour4Title: "Personal Analysis",
+    tour4Body: "Every workout is logged. Personal records, achievement badges and weekly goals keep you motivated.",
+    tour5Title: "Voice Coach & Combo Caller",
+    tour5Body: "The coach calls out cues; in the Timer the combo caller shouts random combinations. Pocket your phone and just work.",
     totalLabel: "Total",
     workMin: "training", restMin: "rest", totalMin2: "total",
     timeSplitLabel: "Time Breakdown",
@@ -2904,9 +2908,10 @@ function TourScreen({ lang, onDone }) {
   const [step, setStep] = useState(0);
   const slides = [
     { icon: "🥊", title: t.tour1Title, body: t.tour1Body, color: RED },
-    { icon: "⚡", title: t.tour2Title, body: t.tour2Body, color: GOLD },
-    { icon: "📈", title: t.tour3Title, body: t.tour3Body, color: "#3b82f6" },
-    { icon: "🎙️", title: t.tour4Title, body: t.tour4Body, color: "#10b981" },
+    { icon: "⚡", title: t.tour2Title, body: t.tour2Body, color: "#f97316" },
+    { icon: "📚", title: t.tour3Title, body: t.tour3Body, color: "#a855f7" },
+    { icon: "📊", title: t.tour4Title, body: t.tour4Body, color: "#3b82f6" },
+    { icon: "🎙️", title: t.tour5Title, body: t.tour5Body, color: "#10b981" },
   ];
   const s = slides[step];
   const last = step === slides.length - 1;
@@ -3085,6 +3090,16 @@ function estimateMinutes(ex, rounds) {
 // Toplam süreyi alır, maksimum gelişim için dengeli bir program kurar.
 // Mantık: gölge boksu HER gün sabit (teknik temeli), diğer kategoriler güne göre
 // rotasyonlu ağırlıkla (bir gün torba yoğun, ertesi gün kondisyon/kuvvet öne çıkar).
+// Tohuma göre deterministik karıştırma (aynı tohum → aynı sonuç, farklı tohum → farklı sıra)
+function seededShuffle(arr, seed) {
+  const a = [...arr]; let s = (seed % 233280 + 233280) % 233280 || 1;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280;
+    const j = Math.floor((s / 233280) * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focusCats) {
   const t = T[lang];
   // 1. Isınma & soğuma: toplamın ~%20'si, ikiye bölünür [min 6, max 16 toplam]
@@ -3170,18 +3185,16 @@ function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focus
       const others = base.filter(ex => !isPush(ex));
       if (pushes.length > 0) base = [pushes[0], ...others, ...pushes.slice(1)];
     }
-    // Gün tohumuna göre başlangıç noktası kaydır (çaylak ve kuvvette sıra bozulmasın diye 0'dan başla)
-    const startIdx = (level !== "beginner" && catId !== "strength" && base.length > exCount) ? (daySeed % (base.length - exCount + 1)) : 0;
+    // Seçim: orta/pro'da havuzu tohuma göre KARIŞTIR (gerçek çeşitlilik);
+    // çaylak ve kuvvette öğretim/kolaylık sırası korunsun diye karıştırma.
+    const ordered = (level !== "beginner" && catId !== "strength")
+      ? seededShuffle(base, daySeed + catId.length * 7 + exCount * 13)
+      : base;
     const chosen = [];
     // En temel hareketi (ilk eleman) çaylakta ve kuvvette her zaman başa koy (kuvvette = en kolay şınav)
-    if ((level === "beginner" || catId === "strength") && base.length > 0) chosen.push(base[0]);
-    for (let i = 0; i < base.length && chosen.length < exCount; i++) {
-      const idx = startIdx + i;
-      if (idx < base.length && !chosen.includes(base[idx])) chosen.push(base[idx]);
-    }
-    // Hâlâ yer varsa baştan tamamla
-    for (let i = 0; i < base.length && chosen.length < exCount; i++) {
-      if (!chosen.includes(base[i])) chosen.push(base[i]);
+    if ((level === "beginner" || catId === "strength") && ordered.length > 0) chosen.push(ordered[0]);
+    for (let i = 0; i < ordered.length && chosen.length < exCount; i++) {
+      if (!chosen.includes(ordered[i])) chosen.push(ordered[i]);
     }
     // Son hareket olarak bir kapanış hareketi ekle (süre 8dk+ ve kapanış varsa)
     if (catMin >= 8 && closers.length > 0 && chosen.length >= 1) {
@@ -3293,6 +3306,7 @@ function MoveLibrary({ lang }) {
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [openId, setOpenId] = useState(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   // Tüm hareketleri tek listede topla (kategori + seviye bilgisiyle) — gizli kategoriler dahil hepsi
   const allMoves = useMemo(() => {
@@ -3327,6 +3341,64 @@ function MoveLibrary({ lang }) {
         <div style={{ color: "#fff", fontSize: 20, fontWeight: 900 }}>{lang === "en" ? "Move Library" : "Hareket Kütüphanesi"}</div>
         <div style={{ color: "#888", fontSize: 12.5, marginTop: 3 }}>{lang === "en" ? `Browse and search all ${allMoves.length} moves.` : `Tüm ${allMoves.length} hareketi gez ve ara.`}</div>
       </div>
+
+      {/* Kombinasyon numaralandırma rehberi */}
+      {(() => {
+        const nums = [
+          { n: "1", tr: "Jab", en: "Jab", d_tr: "Öndeki el, düz yumruk", d_en: "Lead hand, straight", c: "#3b82f6" },
+          { n: "2", tr: "Cross", en: "Cross", d_tr: "Arka el, düz yumruk", d_en: "Rear hand, straight", c: RED },
+          { n: "3", tr: "Sol Kroşe", en: "Left Hook", d_tr: "Öndeki el, yandan", d_en: "Lead hand, from the side", c: "#a855f7" },
+          { n: "4", tr: "Sağ Kroşe", en: "Right Hook", d_tr: "Arka el, yandan", d_en: "Rear hand, from the side", c: "#a855f7" },
+          { n: "5", tr: "Sol Aparkat", en: "Left Uppercut", d_tr: "Öndeki el, alttan", d_en: "Lead hand, from below", c: "#f59e0b" },
+          { n: "6", tr: "Sağ Aparkat", en: "Right Uppercut", d_tr: "Arka el, alttan", d_en: "Rear hand, from below", c: "#f59e0b" },
+        ];
+        const combos = [
+          { seq: "1-2", tr: "jab – cross", en: "jab – cross" },
+          { seq: "1-1-2", tr: "çift jab – cross", en: "double jab – cross" },
+          { seq: "1-2-3", tr: "jab – cross – sol kroşe", en: "jab – cross – left hook" },
+          { seq: "1-2-3-2", tr: "jab – cross – kroşe – cross", en: "jab – cross – hook – cross" },
+          { seq: "2-3-2", tr: "cross – kroşe – cross", en: "cross – hook – cross" },
+          { seq: "1-6-3", tr: "jab – sağ aparkat – sol kroşe", en: "jab – right uppercut – left hook" },
+        ];
+        return (
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={() => setShowGuide(v => !v)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: `linear-gradient(135deg, ${RED}1a, ${CARD})`, border: `1px solid ${RED}44`, borderRadius: 14, padding: "13px 15px", cursor: "pointer", textAlign: "left" }}>
+              <span style={{ fontSize: 20 }}>📖</span>
+              <span style={{ flex: 1 }}>
+                <span style={{ display: "block", color: "#fff", fontSize: 14, fontWeight: 800 }}>{lang === "en" ? "Combo Numbering Guide" : "Kombinasyon Numara Rehberi"}</span>
+                <span style={{ display: "block", color: "#999", fontSize: 11.5, marginTop: 1 }}>{lang === "en" ? "What do 1-2-3 mean? Learn the boxing language." : "1-2-3 ne demek? Boksun dilini öğren."}</span>
+              </span>
+              <span style={{ color: RED, fontSize: 16, fontWeight: 900, transform: showGuide ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}>›</span>
+            </button>
+            {showGuide && (
+              <div style={{ background: CARD, border: `1px solid ${LINE}`, borderTop: "none", borderRadius: "0 0 14px 14px", padding: "14px 15px", marginTop: -6 }}>
+                <div style={{ color: "#777", fontSize: 10.5, letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>{lang === "en" ? "THE NUMBERS" : "NUMARALAR"}</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                  {nums.map(x => (
+                    <div key={x.n} style={{ display: "flex", alignItems: "center", gap: 10, background: "#ffffff06", borderRadius: 10, padding: "9px 11px" }}>
+                      <span style={{ width: 30, height: 30, borderRadius: "50%", background: x.c, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 900, flexShrink: 0 }}>{x.n}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", color: "#fff", fontSize: 12.5, fontWeight: 800 }}>{lang === "en" ? x.en : x.tr}</span>
+                        <span style={{ display: "block", color: "#888", fontSize: 10.5, lineHeight: 1.3 }}>{lang === "en" ? x.d_en : x.d_tr}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ color: "#777", fontSize: 10.5, letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>{lang === "en" ? "POPULAR COMBOS" : "POPÜLER KOMBİNASYONLAR"}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {combos.map(x => (
+                    <div key={x.seq} style={{ display: "flex", alignItems: "center", gap: 12, background: "#ffffff06", borderRadius: 10, padding: "9px 12px" }}>
+                      <span style={{ color: RED, fontSize: 14, fontWeight: 900, letterSpacing: 1, minWidth: 62 }}>{x.seq}</span>
+                      <span style={{ color: "#bbb", fontSize: 12, fontWeight: 600 }}>{lang === "en" ? x.en : x.tr}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ color: "#666", fontSize: 11, lineHeight: 1.5, marginTop: 12, background: `${GOLD}10`, borderRadius: 8, padding: "9px 11px" }}>💡 {lang === "en" ? "Numbers assume orthodox (right-handed) stance. Southpaws mirror left/right. \"b\" after a number (e.g. 3b) means to the body." : "Numaralar ortodoks (sağ elini arkada tutan) duruşa göredir. Güneypençe (solak) tam tersi. Numaradan sonra \"b\" (ör. 3b) gövdeye demektir."}</div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Arama */}
       <div style={{ position: "relative", margin: "14px 0 12px" }}>
@@ -3913,6 +3985,182 @@ function TrainingJournal({ lang, onStartFirst }) {
 }
 
 // ─── Koşu Modu ────────────────────────────────────────────────────────────────
+// ─── Gelişmiş Timer (kendi antrenmanın için round zamanlayıcı) ─────────────────
+const TIMER_CFG_KEY = "boxerpro_timer_cfg_v1";
+function loadTimerCfg() {
+  const def = { rounds: 3, work: 180, rest: 60, prep: 10 };
+  if (typeof window === "undefined") return def;
+  try { return { ...def, ...JSON.parse(window.localStorage.getItem(TIMER_CFG_KEY) || "{}") }; } catch { return def; }
+}
+function saveTimerCfg(c) { try { window.localStorage.setItem(TIMER_CFG_KEY, JSON.stringify(c)); } catch {} }
+const fmtMS = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+function TimerMode({ lang, soundOn, onSaved }) {
+  const [cfg, setCfg] = useState(loadTimerCfg);
+  const [running, setRunning] = useState(false);
+  const [active, setActive] = useState(false); // tam ekran timer açık mı
+  const [phase, setPhase] = useState("prep"); // prep | work | rest | done
+  const [round, setRound] = useState(1);
+  const [left, setLeft] = useState(cfg.prep || 0);
+  const iv = useRef(null);
+  const cue = useRef({ ten:false, t3:false, t2:false, t1:false });
+  const [combo, setCombo] = useState(false); // kombinasyon çağırıcı
+  const comboT = useRef(null);
+
+  useEffect(() => { saveTimerCfg(cfg); }, [cfg]);
+
+  const phaseTotal = phase === "prep" ? (cfg.prep||1) : phase === "work" ? cfg.work : cfg.rest;
+  const accent = phase === "work" ? RED : phase === "rest" ? "#10b981" : GOLD;
+
+  const start = () => {
+    haptic(HAPTIC.tap);
+    cue.current = { ten:false, t3:false, t2:false, t1:false };
+    const startPhase = (cfg.prep > 0) ? "prep" : "work";
+    setPhase(startPhase); setRound(1); setLeft(startPhase === "prep" ? cfg.prep : cfg.work);
+    setActive(true); setRunning(true);
+    if (combo) primeSpeech();
+    if (soundOn && startPhase === "work") playNextExercise();
+  };
+  const stopAll = () => { setRunning(false); clearInterval(iv.current); };
+  const exit = () => { stopAll(); setActive(false); setPhase("prep"); setRound(1); setLeft(cfg.prep||0); };
+
+  const logWorkout = () => {
+    const totalMin = Math.max(1, Math.round((cfg.rounds * cfg.work) / 60));
+    try { addJournalEntry({ kind: "auto", title: lang === "en" ? "⏱️ Timer session" : "⏱️ Timer antrenmanı", points: PTS_PER_WORKOUT, calories: Math.round(totalMin * 8), durationMin: totalMin }); } catch {}
+    onSaved && onSaved();
+  };
+
+  // İlerleyiş: her saniye
+  useEffect(() => {
+    if (!running) { clearInterval(iv.current); return; }
+    iv.current = setInterval(() => {
+      setLeft(prev => {
+        if (prev > 1) return prev - 1;
+        // faz bitti → sonraki faza geç
+        clearInterval(iv.current);
+        advance();
+        return 0;
+      });
+    }, 1000);
+    return () => clearInterval(iv.current);
+  }, [running, phase, round]);
+
+  // Sesli uyarılar (10sn + 3-2-1)
+  useEffect(() => {
+    if (!running || phase === "done") return;
+    const c = cue.current;
+    if (left === 10 && phaseTotal > 11 && !c.ten) { c.ten = true; if (soundOn) playTenLeft(); haptic(HAPTIC.warning); }
+    if (left === 3 && phaseTotal > 4 && !c.t3) { c.t3 = true; if (soundOn) playCountTick(false); haptic(HAPTIC.tap); }
+    if (left === 2 && phaseTotal > 3 && !c.t2) { c.t2 = true; if (soundOn) playCountTick(false); haptic(HAPTIC.tap); }
+    if (left === 1 && phaseTotal > 2 && !c.t1) { c.t1 = true; if (soundOn) playCountTick(true); haptic(HAPTIC.tap); }
+  }, [left, running]);
+
+  // Kombinasyon çağırıcı — sadece çalışma (work) fazında, rastgele combo seslendir
+  useEffect(() => {
+    if (!(running && phase === "work" && combo)) { clearTimeout(comboT.current); return; }
+    let stop = false;
+    const fire = () => {
+      if (stop) return;
+      const arr = COMBO_CALLS[lang] || COMBO_CALLS.tr;
+      speak(arr[Math.floor(Math.random() * arr.length)], lang);
+      haptic(HAPTIC.tap);
+      comboT.current = setTimeout(fire, 3500 + Math.random() * 2500); // 3.5–6 sn arası
+    };
+    comboT.current = setTimeout(fire, 1200);
+    return () => { stop = true; clearTimeout(comboT.current); };
+  }, [running, phase, combo, lang]);
+
+  const advance = () => {
+    cue.current = { ten:false, t3:false, t2:false, t1:false };
+    if (phase === "prep") { setPhase("work"); setLeft(cfg.work); if (soundOn) playNextExercise(); haptic(HAPTIC.success); return; }
+    if (phase === "work") {
+      if (round >= cfg.rounds) { setPhase("done"); setRunning(false); if (soundOn) playFinishBeeps(); haptic(HAPTIC.success); logWorkout(); return; }
+      if (cfg.rest > 0) { setPhase("rest"); setLeft(cfg.rest); if (soundOn) playToRest(); haptic(HAPTIC.warning); }
+      else { setRound(r => r+1); setLeft(cfg.work); if (soundOn) playNextExercise(); haptic(HAPTIC.success); }
+      return;
+    }
+    if (phase === "rest") { setRound(r => r+1); setPhase("work"); setLeft(cfg.work); if (soundOn) playRestEnd(); haptic(HAPTIC.success); return; }
+  };
+
+  const skip = () => { clearInterval(iv.current); advance(); };
+  const setC = (k,v) => setCfg(c => ({ ...c, [k]: v }));
+
+  // ── KURULUM EKRANI ──
+  if (!active) {
+    const Stepper = ({ label, val, disp, min, max, step, onCh }) => (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10 }}>
+        <span style={{ color: "#ddd", fontSize: 14, fontWeight: 700 }}>{label}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => onCh(Math.max(min, val - step))} style={{ width: 34, height: 34, borderRadius: 10, border: `1px solid ${RED}55`, background: "transparent", color: RED, fontSize: 20, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>−</button>
+          <span style={{ color: "#fff", fontSize: 16, fontWeight: 900, minWidth: 58, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{disp}</span>
+          <button onClick={() => onCh(Math.min(max, val + step))} style={{ width: 34, height: 34, borderRadius: 10, border: `1px solid ${RED}55`, background: "transparent", color: RED, fontSize: 20, fontWeight: 900, cursor: "pointer", lineHeight: 1 }}>+</button>
+        </div>
+      </div>
+    );
+    const totalMin = Math.round((cfg.rounds * cfg.work + Math.max(0, cfg.rounds - 1) * cfg.rest + (cfg.prep||0)) / 60);
+    return (
+      <div>
+        <div style={{ color: "#888", fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>{lang === "en" ? "Set up your own round timer for shadow, bag or any training. Rounds, work, rest — you decide." : "Kendi round zamanlayıcını kur: gölge, torba ya da istediğin antrenman için. Round, çalışma, dinlenme — hepsi sana kalmış."}</div>
+        <Stepper label={lang==="en"?"Rounds":"Round sayısı"} val={cfg.rounds} disp={cfg.rounds} min={1} max={20} step={1} onCh={v=>setC("rounds",v)} />
+        <Stepper label={lang==="en"?"Round time":"Round süresi"} val={cfg.work} disp={fmtMS(cfg.work)} min={10} max={600} step={10} onCh={v=>setC("work",v)} />
+        <Stepper label={lang==="en"?"Rest":"Dinlenme"} val={cfg.rest} disp={cfg.rest===0?(lang==="en"?"None":"Yok"):fmtMS(cfg.rest)} min={0} max={180} step={5} onCh={v=>setC("rest",v)} />
+        <Stepper label={lang==="en"?"Prepare":"Hazırlık"} val={cfg.prep} disp={cfg.prep===0?(lang==="en"?"None":"Yok"):cfg.prep+" sn"} min={0} max={30} step={5} onCh={v=>setC("prep",v)} />
+        {/* Kombinasyon çağırıcı */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: combo ? `${RED}14` : CARD, border: `1px solid ${combo ? RED+"66" : LINE}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10 }}>
+          <span style={{ minWidth: 0, paddingRight: 10 }}>
+            <span style={{ display: "block", color: "#ddd", fontSize: 14, fontWeight: 700 }}>🎙️ {lang==="en"?"Combo caller":"Kombinasyon çağırıcı"}</span>
+            <span style={{ display: "block", color: "#888", fontSize: 11.5, marginTop: 2, lineHeight: 1.35 }}>{lang==="en"?"Calls random combos out loud during each round (great for shadow)." : "Her round'da sesli rastgele kombinasyon söyler (gölge boks için birebir)."}</span>
+          </span>
+          <button onClick={() => { const nx = !combo; setCombo(nx); if (nx) primeSpeech(); }} style={{ flexShrink: 0, background: combo ? RED : "#1e1e1e", color: combo ? "#fff" : "#666", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{combo ? (lang==="en"?"ON":"AÇIK") : (lang==="en"?"OFF":"KAPALI")}</button>
+        </div>
+        <div style={{ textAlign: "center", color: "#666", fontSize: 12.5, fontWeight: 700, margin: "6px 0 16px" }}>{lang==="en"?"Total":"Toplam"}: ~{totalMin} {lang==="en"?"min":"dk"}</div>
+        <button onClick={start} style={{ width: "100%", background: `linear-gradient(135deg, ${RED}, #ff6b6b)`, color: "#fff", border: "none", borderRadius: 16, padding: "18px", fontSize: 18, fontWeight: 900, cursor: "pointer", letterSpacing: 1, boxShadow: `0 8px 26px ${RED}55` }}>▶ {lang==="en"?"START TIMER":"TIMER'I BAŞLAT"}</button>
+      </div>
+    );
+  }
+
+  // ── TAM EKRAN TIMER ──
+  const R = 130, C = 2 * Math.PI * R;
+  const frac = phaseTotal > 0 ? left / phaseTotal : 0;
+  const phaseLabel = phase === "prep" ? (lang==="en"?"GET READY":"HAZIRLAN") : phase === "work" ? (lang==="en"?"WORK":"ÇALIŞ") : phase === "rest" ? (lang==="en"?"REST":"DİNLEN") : (lang==="en"?"DONE":"BİTTİ");
+  return (
+    <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 200, maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 20px)" }}>
+      {phase !== "done" ? (
+        <>
+          <div style={{ color: accent, fontSize: 15, fontWeight: 900, letterSpacing: 3, marginBottom: 6 }}>{phaseLabel}</div>
+          <div style={{ color: "#888", fontSize: 14, fontWeight: 700, marginBottom: 16 }}>{lang==="en"?"Round":"Round"} {round}/{cfg.rounds}</div>
+          <button onClick={() => { const nx = !combo; setCombo(nx); if (nx) primeSpeech(); }} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: combo ? `${RED}22` : "#ffffff08", border: `1px solid ${combo ? RED : LINE}`, color: combo ? "#fff" : "#888", borderRadius: 20, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", marginBottom: 18 }}>🎙️ {lang==="en"?"Combo caller":"Combo çağırıcı"}: {combo ? (lang==="en"?"ON":"AÇIK") : (lang==="en"?"OFF":"KAPALI")}</button>
+          <div style={{ position: "relative", width: 300, height: 300, marginBottom: 24 }}>
+            <svg width="300" height="300" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="150" cy="150" r={R} fill="none" stroke="#1a1a1f" strokeWidth="14" />
+              <circle cx="150" cy="150" r={R} fill="none" stroke={accent} strokeWidth="14" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} style={{ transition: "stroke-dashoffset 1s linear" }} />
+            </svg>
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ color: "#fff", fontSize: 64, fontWeight: 900, fontVariantNumeric: "tabular-nums", letterSpacing: -2 }}>{fmtMS(left)}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <button onClick={exit} style={{ width: 56, height: 56, borderRadius: "50%", background: CARD, border: `1px solid ${LINE}`, color: "#888", fontSize: 18, cursor: "pointer" }}>✕</button>
+            <button onClick={() => setRunning(r => !r)} style={{ width: 76, height: 76, borderRadius: "50%", background: accent, border: "none", color: "#fff", fontSize: 26, cursor: "pointer", boxShadow: `0 6px 22px ${accent}66` }}>{running ? "⏸" : "▶"}</button>
+            <button onClick={skip} style={{ width: 56, height: 56, borderRadius: "50%", background: CARD, border: `1px solid ${LINE}`, color: "#888", fontSize: 18, cursor: "pointer" }}>⏭</button>
+          </div>
+        </>
+      ) : (
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 60, marginBottom: 12 }}>🏆</div>
+          <div style={{ color: "#fff", fontSize: 26, fontWeight: 900, marginBottom: 8 }}>{lang==="en"?"Session complete!":"Antrenman bitti!"}</div>
+          <div style={{ color: "#aaa", fontSize: 14, marginBottom: 4 }}>{cfg.rounds} round · {fmtMS(cfg.work)} {lang==="en"?"each":"her biri"}</div>
+          <div style={{ color: GOLD, fontSize: 14, fontWeight: 800, marginBottom: 28 }}>+{PTS_PER_WORKOUT} {lang==="en"?"points":"puan"}</div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button onClick={() => { setPhase("prep"); setActive(false); }} style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, color: "#ccc", borderRadius: 14, padding: "15px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>{lang==="en"?"Close":"Kapat"}</button>
+            <button onClick={start} style={{ flex: 1, background: RED, border: "none", color: "#fff", borderRadius: 14, padding: "15px", fontSize: 15, fontWeight: 900, cursor: "pointer" }}>↺ {lang==="en"?"Again":"Tekrar"}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RunningMode({ lang, onSaved }) {
   const t = T[lang];
   const [running, setRunning] = useState(false);
@@ -4243,7 +4491,7 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
 
       <button onClick={() => {
           if (!canUseAuto()) { setLimitHit(true); return; }
-          const p = buildAutoProgram(totalMin, level, equipment, lang, new Date().getDate(), goal, focusCats);
+          const p = buildAutoProgram(totalMin, level, equipment, lang, Math.floor(Math.random() * 100000), goal, focusCats);
           if (!isPremium) bumpAutoGen();
           setProgram(p);
         }}
@@ -4785,7 +5033,7 @@ function EquipmentPanel({ lang, equipment, toggleEquip }) {
 }
 
 // ─── Ayarlar Paneli ───────────────────────────────────────────────────────────
-function SettingsPanel({ lang, roundSec, setRoundSec, restSec, setRestSec, coachOn, setCoachOn, soundOn, setSoundOn, warnSec, setWarnSec, equipment, toggleEquip, onEditProfile }) {
+function SettingsPanel({ lang, roundSec, setRoundSec, restSec, setRestSec, coachOn, setCoachOn, soundOn, setSoundOn, warnSec, setWarnSec, equipment, toggleEquip, onEditProfile, onReplayTour }) {
   const t = T[lang];
   const [reminder, setReminder] = useState(() => loadReminder());
   const [reminderMsg, setReminderMsg] = useState("");
@@ -4807,9 +5055,14 @@ function SettingsPanel({ lang, roundSec, setRoundSec, restSec, setRestSec, coach
   return (
     <div style={{ background: CARD, borderRadius: 14, padding: 16, marginBottom: 16, border: `1px solid ${LINE}` }}>
       {/* Profil düzenle */}
-      <button onClick={onEditProfile} style={{ width: "100%", marginBottom: 16, padding: "12px", borderRadius: 10, border: `1px solid ${RED}55`, background: `${RED}11`, color: RED, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+      <button onClick={onEditProfile} style={{ width: "100%", marginBottom: 10, padding: "12px", borderRadius: 10, border: `1px solid ${RED}55`, background: `${RED}11`, color: RED, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
         👤 {t.pEdit}
       </button>
+      {onReplayTour && (
+        <button onClick={onReplayTour} style={{ width: "100%", marginBottom: 16, padding: "12px", borderRadius: 10, border: `1px solid ${LINE}`, background: "transparent", color: "#aaa", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+          📖 {lang === "en" ? "Replay intro tour" : "Tanıtım turunu tekrar göster"}
+        </button>
+      )}
 
       {/* Antrenman hatırlatması */}
       <div style={{ background: "#0e0e10", border: `1px solid ${reminder.enabled ? "#10b981" + "55" : LINE}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
@@ -4857,10 +5110,11 @@ function SettingsPanel({ lang, roundSec, setRoundSec, restSec, setRestSec, coach
         <span style={{ color: "#bbb", fontSize: 13, fontWeight: 700 }}>🔔 {t.soundGong}</span>
         <button onClick={() => setSoundOn(s => !s)} style={{ background: soundOn ? "#22c55e" : "#1e1e1e", color: soundOn ? "#000" : "#666", border: "none", borderRadius: 20, padding: "6px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{soundOn ? t.on : t.off}</button>
       </div>
-      {/* Uyarı */}
-      <div style={{ color: "#bbb", fontSize: 13, fontWeight: 700, marginBottom: 8 }}>⏰ {t.endWarn}</div>
-      <div style={{ display: "flex", gap: 6 }}>
-        {[[0, t.disabled], [30, t.rest30], [60, t.rest60]].map(([v, l]) => <button key={v} onClick={() => setWarnSec(v)} style={{ flex: 1, background: warnSec === v ? RED : "#1a1a1a", color: warnSec === v ? "#fff" : "#666", border: "none", borderRadius: 8, padding: "9px 4px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{l}</button>)}
+      {/* İlk uyarı — kaç saniye kala */}
+      <div style={{ color: "#bbb", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>⏰ {lang === "en" ? "First warning (seconds left)" : "İlk uyarı (kaç saniye kala)"}</div>
+      <div style={{ color: "#666", fontSize: 11, marginBottom: 8, lineHeight: 1.4 }}>{lang === "en" ? "The first alert fires this many seconds before the round ends. The last 3 seconds always count down automatically." : "İlk sesli/görsel uyarı, round bitmeden bu kadar saniye kala verilir. Son 3 saniye her zaman otomatik geri sayılır."}</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {[[0, lang === "en" ? "Off" : "Kapalı"], [10, "10 sn"], [15, "15 sn"], [20, "20 sn"], [30, "30 sn"], [45, "45 sn"], [60, "60 sn"]].map(([v, l]) => <button key={v} onClick={() => setWarnSec(v)} style={{ flex: "1 1 26%", background: warnSec === v ? RED : "#1a1a1a", color: warnSec === v ? "#fff" : "#666", border: "none", borderRadius: 8, padding: "9px 4px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{l}</button>)}
       </div>
       <div style={{ color: "#555", fontSize: 11, marginTop: 10, textAlign: "center", lineHeight: 1.8 }}>🔊 {t.testSound}: <button onClick={() => playNextExercise()} style={{ background: "none", border: "none", color: "#10b981", cursor: "pointer", fontSize: 11, textDecoration: "underline", fontWeight: 700 }}>{lang === "en" ? "next move" : "sıradaki"}</button> · <button onClick={() => playToRest()} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", fontSize: 11, textDecoration: "underline", fontWeight: 700 }}>{lang === "en" ? "rest" : "dinlenme"}</button> · <button onClick={() => playRestEnd()} style={{ background: "none", border: "none", color: GOLD, cursor: "pointer", fontSize: 11, textDecoration: "underline", fontWeight: 700 }}>{lang === "en" ? "resume" : "devam"}</button> · <button onClick={() => { playTenLeft(); setTimeout(() => playCountTick(false), 900); setTimeout(() => playCountTick(false), 1300); setTimeout(() => playCountTick(true), 1700); }} style={{ background: "none", border: "none", color: "#f59e0b", cursor: "pointer", fontSize: 11, textDecoration: "underline", fontWeight: 700 }}>{lang === "en" ? "10s+countdown" : "son 10sn+geri sayım"}</button> · <button onClick={() => playFinishBeeps()} style={{ background: "none", border: "none", color: RED, cursor: "pointer", fontSize: 11, textDecoration: "underline", fontWeight: 700 }}>{lang === "en" ? "finish" : "bitiş"}</button></div>
 
@@ -5077,10 +5331,10 @@ function AppInner() {
                   <div style={{ color: "#fff", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative" }}>{lang === "en" ? "Find your next workout" : "Sıradaki antrenmanını bul"}</div>
                   <div style={{ position: "absolute", left: 22, bottom: 22, display: "inline-flex", alignItems: "center", gap: 8, background: "#ffffff", color: "#111", borderRadius: 22, padding: "10px 16px", fontSize: 13, fontWeight: 900 }}>🔍 {lang === "en" ? "START" : "BAŞLA"}</div>
                 </button>
-                {/* Kart 2 — kondisyon/koşu */}
+                {/* Kart 2 — timer */}
                 <button onClick={() => { setTrainSub("run"); setTab("train"); }} style={{ flexShrink: 0, width: 270, height: 188, borderRadius: 20, border: "none", cursor: "pointer", padding: 22, textAlign: "left", position: "relative", overflow: "hidden", background: "linear-gradient(150deg, #10b981, #064e3b)", boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
-                  <div style={{ position: "absolute", right: -15, top: -5, fontSize: 130, opacity: 0.15 }}>🏃</div>
-                  <div style={{ color: "#fff", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative" }}>{lang === "en" ? "Cardio & Running" : "Kondisyon & Koşu"}</div>
+                  <div style={{ position: "absolute", right: -15, top: -5, fontSize: 130, opacity: 0.15 }}>⏱️</div>
+                  <div style={{ color: "#fff", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative" }}>{lang === "en" ? "Round Timer" : "Round Timer"}</div>
                   <div style={{ position: "absolute", left: 22, bottom: 22, display: "inline-flex", alignItems: "center", gap: 8, background: "#ffffff", color: "#111", borderRadius: 22, padding: "10px 16px", fontSize: 13, fontWeight: 900 }}>▶ {lang === "en" ? "OPEN" : "AÇ"}</div>
                 </button>
                 {/* Kart 3 — başarımlar */}
@@ -5143,13 +5397,13 @@ function AppInner() {
         {tab === "train" && (
           <div>
             <div style={{ display: "flex", gap: 6, background: CARD, borderRadius: 12, padding: 4, marginBottom: 18 }}>
-              {[{ id: "auto", icon: "⚡", label: lang === "en" ? "Auto" : "Otomatik" }, { id: "build", icon: "🥊", label: lang === "en" ? "Build" : "Kendin Kur" }, { id: "run", icon: "🏃", label: lang === "en" ? "Run" : "Koşu" }].map(sg => (
+              {[{ id: "auto", icon: "⚡", label: lang === "en" ? "Auto" : "Otomatik" }, { id: "build", icon: "🥊", label: lang === "en" ? "Build" : "Kendin Kur" }, { id: "run", icon: "⏱️", label: lang === "en" ? "Timer" : "Timer" }].map(sg => (
                 <button key={sg.id} onClick={() => setTrainSub(sg.id)} style={{ flex: 1, background: trainSub === sg.id ? RED : "transparent", color: trainSub === sg.id ? "#fff" : "#888", border: "none", borderRadius: 9, padding: "10px 4px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>{sg.icon} {sg.label}</button>
               ))}
             </div>
             {trainSub === "auto" && <AutoProgram lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} initMin={autoInitMin} />}
             {trainSub === "build" && <ProgramPicker lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} />}
-            {trainSub === "run" && <RunningMode lang={lang} onSaved={onRunSaved} />}
+            {trainSub === "run" && <TimerMode lang={lang} soundOn={soundOn} onSaved={onRunSaved} />}
           </div>
         )}
 
@@ -5158,7 +5412,7 @@ function AppInner() {
           <div>
             <EquipmentPanel lang={lang} equipment={equipment} toggleEquip={toggleEquip} />
             <div style={{ height: 14 }} />
-            <SettingsPanel lang={lang} roundSec={roundSec} setRoundSec={setRoundSec} restSec={restSec} setRestSec={setRestSec} coachOn={coachOn} setCoachOn={setCoachOn} soundOn={soundOn} setSoundOn={setSoundOn} warnSec={warnSec} setWarnSec={setWarnSec} onEditProfile={() => setShowProfile(true)} />
+            <SettingsPanel lang={lang} roundSec={roundSec} setRoundSec={setRoundSec} restSec={restSec} setRestSec={setRestSec} coachOn={coachOn} setCoachOn={setCoachOn} soundOn={soundOn} setSoundOn={setSoundOn} warnSec={warnSec} setWarnSec={setWarnSec} onEditProfile={() => setShowProfile(true)} onReplayTour={() => setShowTour(true)} />
           </div>
         )}
       </div>
