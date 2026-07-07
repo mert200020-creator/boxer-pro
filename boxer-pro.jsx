@@ -1,63 +1,3 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#0a0a0c" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="BOXER PRO" />
-<meta name="description" content="BOXER PRO — Profesyonel boks antrenman uygulaması. Otomatik program, gölge boksu, ağır torba, kondisyon ve daha fazlası." />
-<link rel="manifest" href="manifest.webmanifest" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
-<link rel="icon" type="image/png" href="icon-192.png" />
-<title>BOXER PRO — Fight Mode</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-<style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; background: #0a0a0c; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    color: #fff;
-    overscroll-behavior-y: none;
-    -webkit-font-smoothing: antialiased;
-  }
-  #root { min-height: 100vh; }
-  /* Yükleme ekranı (Babel derlerken görünür) */
-  #boot {
-    position: fixed; inset: 0; background: #0a0a0c; display: flex;
-    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
-    font-family: 'Inter', sans-serif; z-index: 9999;
-  }
-  #boot .glove { font-size: 56px; animation: bootPulse 1.1s ease-in-out infinite; }
-  #boot .ttl { color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 2px; }
-  #boot .sub { color: #FF3333; font-size: 11px; font-weight: 800; letter-spacing: 4px; }
-  @keyframes bootPulse { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.12); opacity: 1; } }
-  ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
-  /* Genel cila: sekme geçişinde yumuşak giriş + butonlarda dokunma hissi */
-  .tab-content { animation: fadeUp 0.30s cubic-bezier(0.16,1,0.3,1) both; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-  button { transition: transform 0.08s ease, filter 0.15s ease, opacity 0.15s ease; }
-  button:active { transform: scale(0.96); }
-  /* Yatay kart şeritlerinde kaydırma akıcı olsun */
-  div[style*="overflow-x: auto"], div[style*="overflowX"] { -webkit-overflow-scrolling: touch; }
-</style>
-</head>
-<body>
-<div id="boot">
-  <div class="glove">&#129354;</div>
-  <div class="ttl">BOXER PRO</div>
-  <div class="sub">YUKLENIYOR...</div>
-</div>
-<div id="root"></div>
-
-<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
-
-<script type="text/babel" data-presets="react">
 import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -5627,33 +5567,10 @@ class ErrorBoundary extends Component {
   }
 }
 
-function App() {
+export default function App() {
   return (
     <ErrorBoundary>
       <AppInner />
     </ErrorBoundary>
   );
 }
-
-
-// Babel derlemesi bitince boot ekranini kaldir ve uygulamayi mount et.
-const __rootEl = document.getElementById('root');
-const __root = ReactDOM.createRoot(__rootEl);
-__root.render(React.createElement(App));
-const __boot = document.getElementById('boot');
-if (__boot) {
-  __boot.style.transition = 'opacity 0.35s ease';
-  __boot.style.opacity = '0';
-  setTimeout(() => __boot.remove(), 380);
-}
-</script>
-<script>
-// PWA: service worker kaydı (kurulabilir + hızlı yeniden yükleme)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function () {});
-  });
-}
-</script>
-</body>
-</html>
