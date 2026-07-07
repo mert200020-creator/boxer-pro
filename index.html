@@ -423,6 +423,7 @@ const T = {
     yearReport: "Yıllık Rapor",
     monthList: "Aylık Kayıtlar",
     totalWorkouts: "Toplam Antrenman",
+    streakDays: "gün üst üste", streakStart: "Bugün antrenmana başla, seriyi aç!", streakLabel: "SERİ",
     totalPoints: "Toplam Puan",
     thisMonth: "Bu Ay",
     pts: "P",
@@ -640,6 +641,7 @@ const T = {
     yearReport: "Yearly Report",
     monthList: "Monthly Log",
     totalWorkouts: "Total Workouts",
+    streakDays: "days in a row", streakStart: "Start training today to begin your streak!", streakLabel: "STREAK",
     totalPoints: "Total Points",
     thisMonth: "This Month",
     pts: "P",
@@ -958,6 +960,20 @@ function addJournalEntry(entry) {
   all.push(full);
   saveJournal(all);
   return full;
+}
+// Seri (streak): bugünden veya dünden geriye, en az bir antrenman kaydı olan ardışık gün sayısı.
+// Bugün henüz antrenman yapılmadıysa seri kopmaz (dün antrenman varsa "devam ediyor" sayılır);
+// hem bugün hem dün boşsa seri 0'a düşer.
+function computeStreak(entries) {
+  if (!entries || entries.length === 0) return 0;
+  const days = new Set(entries.map(e => e.date));
+  const d = new Date();
+  const fmt = (dt) => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+  let streak = 0;
+  let cursor = new Date(d);
+  if (!days.has(fmt(cursor))) cursor.setDate(cursor.getDate() - 1); // bugün yoksa dünden başla
+  while (days.has(fmt(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+  return streak;
 }
 function updateJournalEntry(id, patch) {
   const all = loadJournal();
@@ -2599,7 +2615,7 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
 
       <div style={{ flex: "0 0 auto", height: 168, padding: "10px 24px 6px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", overflow: "hidden" }}>
         {step?.kind === "rest" ? (
-          <><div style={{ fontSize: 40, marginBottom: 8 }}>😮‍💨</div><div style={{ color: "#3b82f6", fontSize: 28, fontWeight: 900, marginBottom: 10 }}>{t.rest}</div>{step?.desc && <div onClick={() => setShowInfo(true)} style={{ color: "#999", fontSize: 14, lineHeight: 1.45, maxWidth: 340, width: "100%", cursor: "pointer", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{step.desc}</div>}</>
+          <><div style={{ fontSize: 40, marginBottom: 8 }}>😮‍💨</div><div style={{ color: "#3b82f6", fontSize: 28, fontWeight: 900, marginBottom: 10 }}>{t.rest}</div><div style={{ color: "#8ab4f8", fontSize: 13.5, fontWeight: 600, fontStyle: "italic", marginBottom: 8, maxWidth: 320 }}>"{REST_QUOTES[lang][idx % REST_QUOTES[lang].length]}"</div>{step?.desc && <div onClick={() => setShowInfo(true)} style={{ color: "#999", fontSize: 14, lineHeight: 1.45, maxWidth: 340, width: "100%", cursor: "pointer", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{step.desc}</div>}</>
         ) : (
           <>
             {step?.setLabel && <div style={{ color: col, fontSize: 14, fontWeight: 800, marginBottom: 6, flexShrink: 0 }}>{step.setLabel}</div>}
@@ -2727,6 +2743,34 @@ const LEGEND_QUOTES = [
   { tr: "Şöhret kalıcı değildir. Sadece çalışmaya devam et.", en: "Fame is fleeting. Just keep working.", author: "Roberto Durán" },
   { tr: "Eller taştan! Pes etmek yok, geri adım yok.", en: "Hands of stone! No surrender, no step back.", author: "Roberto Durán" },
 ];
+
+// Dinlenme fazında gösterilen kısa antrenör sözleri — round arası ekranda döner
+const REST_QUOTES = {
+  tr: [
+    "Nefes al. Bir round daha var.",
+    "Şampiyonlar burada kazanılır — dinlenmede.",
+    "Kalbini sakinleştir, elleri hazırla.",
+    "Bu nefes, bir sonraki round'un yakıtı.",
+    "Bitmedi. Sadece bir nefeslik ara.",
+    "Zihnini sıfırla, vücudun seni takip eder.",
+    "En güçlü olduğun round, bir sonraki.",
+    "Şimdi dinlen ki sonra vurabilesin.",
+    "Bir round daha — sen bunu yaparsın.",
+    "Omuzlarını gevşet, çeneni topla.",
+  ],
+  en: [
+    "Breathe. One more round.",
+    "Champions are made in the rest.",
+    "Calm your heart, ready your hands.",
+    "This breath fuels your next round.",
+    "Not done yet. Just a breath away.",
+    "Reset your mind, your body follows.",
+    "Your strongest round is the next one.",
+    "Rest now so you can hit later.",
+    "One more round — you've got this.",
+    "Loosen your shoulders, tuck your chin.",
+  ],
+};
 
 // Gün içi öneriler — günlük rotasyonla gösterilir (boks/antrenman/yaşam tavsiyeleri)
 const DAILY_TIPS = {
@@ -3124,14 +3168,15 @@ function seededShuffle(arr, seed) {
   }
   return a;
 }
-function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focusCats) {
+function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focusCats, tired) {
   const t = T[lang];
   // 1. Isınma & soğuma: toplamın ~%20'si, ikiye bölünür [min 6, max 16 toplam]
   const wcTotal = Math.min(16, Math.max(totalMin <= 18 ? 4 : 6, Math.round(totalMin * 0.18)));
   const warmMin = Math.ceil(wcTotal / 2);
   const coolMin = wcTotal - warmMin;
   const mainBlock = Math.max(8, totalMin - wcTotal);
-  const restBudgetRatio = 0.28;
+  // Yorgun modu: aynı toplam süre sözü korunur, ama iş/dinlenme oranı gevşer (daha çok dinlenme, daha az yük)
+  const restBudgetRatio = tired ? 0.42 : 0.28;
   const mainMin = Math.max(6, Math.round(mainBlock * (1 - restBudgetRatio)));
 
   // 2. Kategori ağırlıkları
@@ -3160,6 +3205,8 @@ function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focus
     else if (goal === "goalSkill") { weights.shadow += 0.06; weights.footwork += 0.06; weights.strength -= 0.06; weights.cardio -= 0.06; }
     else if (goal === "goalCompete") { weights.bag += 0.06; weights.shadow += 0.04; weights.strength -= 0.05; weights.cardio -= 0.05; }
     else if (goal === "goalStress") { weights.bag += 0.07; weights.cardio += 0.04; weights.strength -= 0.06; weights.footwork -= 0.05; }
+    // Yorgun modu: ağır kategorilerden (kuvvet, torba) hafif olanlara (gölge boksu, ayak işi) pay kaydır
+    if (tired) { weights.shadow = (weights.shadow || 0) + 0.10; weights.footwork = (weights.footwork || 0) + 0.06; weights.strength = (weights.strength || 0) - 0.09; weights.bag = (weights.bag || 0) - 0.07; }
     Object.keys(weights).forEach(k => { if (weights[k] < 0.05) weights[k] = 0.05; });
   }
 
@@ -3515,6 +3562,7 @@ function TrainingJournal({ lang, onStartFirst }) {
   const totalCals = entries.reduce((s, e) => s + (e.calories || 0), 0);
   const totalKm = entries.reduce((s, e) => s + (e.distanceKm || 0), 0);
   const thisMonthCount = entries.filter(e => { const d = new Date(e.date); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).length;
+  const streak = useMemo(() => computeStreak(entries), [entries]);
 
   const byMonth = {};
   yearEntries.forEach(e => { const d = new Date(e.date); const k = d.getMonth(); (byMonth[k] = byMonth[k] || []).push(e); });
@@ -3653,6 +3701,19 @@ function TrainingJournal({ lang, onStartFirst }) {
 
   return (
     <div>
+      {/* Seri (streak) rozeti */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, background: streak > 0 ? "#ff6b0018" : "#ffffff06", border: `1px solid ${streak > 0 ? "#ff6b0055" : LINE}`, borderRadius: 14, padding: "12px 14px", marginBottom: 14 }}>
+        <span style={{ fontSize: 26 }}>{streak > 0 ? "🔥" : "🥊"}</span>
+        {streak > 0 ? (
+          <span>
+            <span style={{ color: "#ff8c3d", fontSize: 20, fontWeight: 900 }}>{streak}</span>
+            <span style={{ color: "#ddd", fontSize: 13, fontWeight: 700, marginLeft: 6 }}>{t.streakDays}</span>
+          </span>
+        ) : (
+          <span style={{ color: "#999", fontSize: 12.5, fontWeight: 600 }}>{t.streakStart}</span>
+        )}
+      </div>
+
       {/* Günün önerisi + motivasyon */}
       <div style={{ background: `linear-gradient(135deg, ${GOLD}12, ${CARD})`, border: `1px solid ${GOLD}33`, borderRadius: 14, padding: 14, marginBottom: 14 }}>
         <div style={{ color: GOLD, fontSize: 10, letterSpacing: 2, fontWeight: 800, marginBottom: 6 }}>💡 {t.todayTip}</div>
@@ -4188,7 +4249,8 @@ function TimerMode({ lang, soundOn, onSaved }) {
       {phase !== "done" ? (
         <>
           <div style={{ color: accent, fontSize: 15, fontWeight: 900, letterSpacing: 3, marginBottom: 6 }}>{phaseLabel}</div>
-          <div style={{ color: "#888", fontSize: 14, fontWeight: 700, marginBottom: 16 }}>{lang==="en"?"Round":"Round"} {round}/{cfg.rounds}</div>
+          <div style={{ color: "#888", fontSize: 14, fontWeight: 700, marginBottom: phase === "rest" ? 8 : 16 }}>{lang==="en"?"Round":"Round"} {round}/{cfg.rounds}</div>
+          {phase === "rest" && <div style={{ color: "#8ab4f8", fontSize: 13, fontWeight: 600, fontStyle: "italic", marginBottom: 16, maxWidth: 280, textAlign: "center" }}>"{REST_QUOTES[lang][round % REST_QUOTES[lang].length]}"</div>}
           <button onClick={() => { const nx = !combo; setCombo(nx); if (nx) primeSpeech(); }} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: combo ? `${RED}22` : "#ffffff08", border: `1px solid ${combo ? RED : LINE}`, color: combo ? "#fff" : "#888", borderRadius: 20, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", marginBottom: 18 }}>🎙️ {lang==="en"?"Combo caller":"Combo çağırıcı"}: {combo ? (lang==="en"?"ON":"AÇIK") : (lang==="en"?"OFF":"KAPALI")}</button>
           <div style={{ position: "relative", width: 300, height: 300, marginBottom: 24 }}>
             <svg width="300" height="300" style={{ transform: "rotate(-90deg)" }}>
@@ -4437,6 +4499,7 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
   const setIntensity = (id, level) => setFocusCats(prev => ({ ...prev, [id]: level }));
   const goal = prof && prof.goal; // hedefe göre kişiselleştirme
   const isPremium = loadPremium();
+  const [tired, setTired] = useState(false); // "Bugün yorgunum" — daha çok dinlenme, daha hafif kategori dağılımı
 
   // Süre seçenekleri: 15-60 dk + saat formatında
   const DURATIONS = [15, 30, 45, 60, 75, 90, 105, 120];
@@ -4505,6 +4568,19 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
         </div>
       </div>
 
+      {/* Bugün yorgunum — daha hafif bir program üretir, toplam süre aynı kalır */}
+      <button onClick={() => setTired(v => !v)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: tired ? "#3b82f61a" : CARD, border: `1.5px solid ${tired ? "#3b82f6" : LINE}`, borderRadius: 12, padding: "13px 14px", marginBottom: 20, cursor: "pointer", textAlign: "left" }}>
+        <span style={{ fontSize: 20 }}>😴</span>
+        <span style={{ flex: 1 }}>
+          <div style={{ color: tired ? "#3b82f6" : "#ddd", fontSize: 13.5, fontWeight: 800 }}>{lang === "en" ? "I'm tired today" : "Bugün Yorgunum"}</div>
+          <div style={{ color: "#777", fontSize: 11, lineHeight: 1.4, marginTop: 2 }}>{lang === "en" ? "Same total time, lighter load — more rest, less strength/bag." : "Toplam süre aynı, yük daha hafif — daha çok dinlenme, daha az kuvvet/torba."}</div>
+        </span>
+        <span style={{ width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${tired ? "#3b82f6" : "#555"}`, background: tired ? "#3b82f6" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {tired && <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>✓</span>}
+        </span>
+      </button>
+
       {/* Neye odaklanmak istersin — kategori + yoğunluk seçimi */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ color: "#555", fontSize: 10, letterSpacing: 2, marginBottom: 6, fontWeight: 700 }}>{t.focusTitle.toUpperCase()}</div>
@@ -4551,7 +4627,7 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
 
       <button onClick={() => {
           if (!canUseAuto()) { setLimitHit(true); return; }
-          const p = buildAutoProgram(totalMin, level, equipment, lang, Math.floor(Math.random() * 100000), goal, focusCats);
+          const p = buildAutoProgram(totalMin, level, equipment, lang, Math.floor(Math.random() * 100000), goal, focusCats, tired);
           if (!isPremium) bumpAutoGen();
           setProgram(p);
         }}
@@ -5411,6 +5487,13 @@ function AppInner() {
           </div>
         )}
         {(tab === "home" || tab === "progress") && <BeltBar points={progress.points} lang={lang} />}
+        {tab === "home" && (() => { const s = computeStreak(loadJournal()); return s > 0 ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
+            <span style={{ fontSize: 14 }}>🔥</span>
+            <span style={{ color: "#ff8c3d", fontSize: 13, fontWeight: 900 }}>{s}</span>
+            <span style={{ color: "#888", fontSize: 11.5, fontWeight: 700 }}>{t.streakDays}</span>
+          </div>
+        ) : null; })()}
       </div>
 
       <div key={tab + (favProgram ? "fav" : "") + (tab === "train" ? trainSub + (autoInitMin || "") : "")} className="tab-content" style={{ padding: "20px 20px calc(env(safe-area-inset-bottom) + 110px)" }}>
@@ -5635,7 +5718,6 @@ function App() {
   );
 }
 
-
 // Babel derlemesi bitince boot ekranini kaldir ve uygulamayi mount et.
 const __rootEl = document.getElementById('root');
 const __root = ReactDOM.createRoot(__rootEl);
@@ -5655,5 +5737,3 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-</body>
-</html>
