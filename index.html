@@ -4688,7 +4688,7 @@ function RunningMode({ lang, onSaved }) {
 
 // Otomatik Program akışının 1. adımı: sadece seviye seçimi, ayrı ve görsel ağırlıklı bir ekran.
 // Seçim yapılınca 2. ekrana (AutoProgram kurulum ekranı) geçilir.
-function AutoLevelPicker({ lang, onPick }) {
+function AutoLevelPicker({ lang, onPick, titleOverride, descOverride }) {
   const t = T[lang];
   const options = [
     { id: "beginner", img: LEVEL_IMG_BEGINNER, tr: "BAŞLANGIÇ", en: "BEGINNER", color: "#22c55e", desc: { tr: "Yeni başlıyorsun, temel hareketler", en: "Just starting out, basic moves" } },
@@ -4699,18 +4699,18 @@ function AutoLevelPicker({ lang, onPick }) {
   return (
     <div>
       <div style={{ background: `linear-gradient(135deg, ${RED}15, ${CARD})`, border: `1px solid ${RED}44`, borderRadius: 16, padding: 18, marginBottom: 20 }}>
-        <div style={{ fontSize: 30, marginBottom: 8 }}>⚡</div>
-        <div style={{ color: "#fff", fontSize: 18, fontWeight: 900, marginBottom: 6 }}>{t.autoTitle}</div>
-        <div style={{ color: "#aaa", fontSize: 13, lineHeight: 1.5 }}>{lang === "en" ? "First, pick your level. Mix blends moves from every level." : "Önce seviyeni seç. Karışık Seviye her seviyeden hareketi bir arada verir."}</div>
+        <div style={{ fontSize: 30, marginBottom: 8 }}>{titleOverride ? "🛠️" : "⚡"}</div>
+        <div style={{ color: "#fff", fontSize: 18, fontWeight: 900, marginBottom: 6 }}>{titleOverride || t.autoTitle}</div>
+        <div style={{ color: "#aaa", fontSize: 13, lineHeight: 1.5 }}>{descOverride || (lang === "en" ? "First, pick your level. Mix blends moves from every level." : "Önce seviyeni seç. Karışık Seviye her seviyeden hareketi bir arada verir.")}</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {options.map(o => (
-          <button key={o.id} onClick={() => onPick(o.id)} style={{ position: "relative", height: 168, borderRadius: 16, border: `1.5px solid ${o.color}55`, overflow: "hidden", cursor: "pointer", padding: 0, background: CARD }}>
-            <img src={o.img} alt={lang === "en" ? o.en : o.tr} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.85) 100%)` }} />
-            <div style={{ position: "absolute", left: 10, right: 10, bottom: 10, textAlign: "left" }}>
-              <div style={{ color: o.color, fontSize: 13, fontWeight: 900, letterSpacing: 1, textShadow: "0 2px 6px rgba(0,0,0,0.8)" }}>{lang === "en" ? o.en : o.tr}</div>
-              <div style={{ color: "#ddd", fontSize: 10.5, fontWeight: 600, marginTop: 2, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>{o.desc[lang === "en" ? "en" : "tr"]}</div>
+          <button key={o.id} onClick={() => onPick(o.id)} style={{ position: "relative", width: "100%", borderRadius: 16, border: `1.5px solid ${o.color}55`, overflow: "hidden", cursor: "pointer", padding: 0, background: CARD, display: "block", lineHeight: 0 }}>
+            <img src={o.img} alt={lang === "en" ? o.en : o.tr} style={{ width: "100%", height: "auto", display: "block" }} />
+            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.88) 100%)` }} />
+            <div style={{ position: "absolute", left: 14, right: 14, bottom: 12, textAlign: "left" }}>
+              <div style={{ color: o.color, fontSize: 15, fontWeight: 900, letterSpacing: 1, textShadow: "0 2px 6px rgba(0,0,0,0.8)" }}>{lang === "en" ? o.en : o.tr}</div>
+              <div style={{ color: "#ddd", fontSize: 11.5, fontWeight: 600, marginTop: 3, lineHeight: 1.35, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>{o.desc[lang === "en" ? "en" : "tr"]}</div>
             </div>
           </button>
         ))}
@@ -4900,6 +4900,7 @@ function AutoProgram({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equip
 function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equipment, onWorkoutComplete }) {
   const t = T[lang];
   const [level, setLevel] = useState("intermediate");
+  const [levelChosen, setLevelChosen] = useState(false); // Seviye, ayrı bir ekranda mı seçildi
   const [selected, setSelected] = useState([]); // seçili modlar (kategoriler)
   const [plan, setPlan] = useState([]); // plan blokları: {uid, catId, ex, rounds}
   const [viewing, setViewing] = useState(false);
@@ -5135,6 +5136,10 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
 
   const lvl = LEVELS.find(l => l.id === level);
 
+  if (!levelChosen) {
+    return <AutoLevelPicker lang={lang} onPick={(id) => { setLevel(id); setLevelChosen(true); }} titleOverride={t.tabBuild} descOverride={lang === "en" ? "First, pick your level. You'll build your own workout on the next screen." : "Önce seviyeni seç. Sonraki ekranda kendi antrenmanını kuracaksın."} />;
+  }
+
   return (
     <div>
       {/* Açıklama kartı */}
@@ -5143,18 +5148,18 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
         <div style={{ color: "#fff", fontSize: 18, fontWeight: 900, marginBottom: 6 }}>{t.tabBuild}</div>
         <div style={{ color: "#aaa", fontSize: 13, lineHeight: 1.5 }}>{t.buildDesc}</div>
       </div>
-      {/* Seviye */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ color: "#555", fontSize: 10, letterSpacing: 3, marginBottom: 10, fontWeight: 700 }}>{t.level}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {LEVELS.map(l => (
-            <button key={l.id} onClick={() => { setLevel(l.id); }} style={{ flex: 1, background: level === l.id ? l.color : CARD, color: level === l.id ? "#000" : "#666", border: `1px solid ${level === l.id ? l.color : LINE}`, borderRadius: 12, padding: "10px 4px", fontSize: 11, fontWeight: 900, cursor: "pointer" }}>{l.icon} {lang === "en" ? l.en : l.tr}</button>
-          ))}
-          <button onClick={() => setLevel("mix")} style={{ flex: 1, background: level === "mix" ? GOLD : CARD, color: level === "mix" ? "#000" : "#666", border: `1px solid ${level === "mix" ? GOLD : LINE}`, borderRadius: 12, padding: "10px 4px", fontSize: 11, fontWeight: 900, cursor: "pointer" }}>🔀 {lang === "en" ? "MIX" : "KARMA"}</button>
-        </div>
+      {/* Seviye — ayrı ekranda zaten seçildi, burada sadece hatırlatma + değiştirme */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "10px 14px", marginBottom: 18 }}>
+        <span style={{ color: "#888", fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>{t.level}</span>
+        <button onClick={() => setLevelChosen(false)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          <span style={{ color: level === "mix" ? GOLD : (lvl && lvl.color), fontSize: 13, fontWeight: 900 }}>
+            {level === "mix" ? "🔀 " + (lang === "en" ? "MIX" : "KARMA") : (lvl ? `${lvl.icon} ${lang==="en"?lvl.en:lvl.tr}` : "")}
+          </span>
+          <span style={{ color: "#666", fontSize: 11 }}>✎</span>
+        </button>
+      </div>
         {level === "pro" && <div style={{ marginTop: 8, color: "#888", fontSize: 11, textAlign: "center", background: "#ffffff08", borderRadius: 8, padding: "6px 10px" }}>⚫ {t.proHint}</div>}
         {level === "mix" && <div style={{ marginTop: 8, color: "#888", fontSize: 11, textAlign: "center", background: `${GOLD}10`, borderRadius: 8, padding: "6px 10px" }}>🔀 {lang === "en" ? "All levels' moves are listed — combine freely." : "Tüm seviyelerin hareketleri listelenir — istediğin gibi birleştir."}</div>}
-      </div>
 
       {/* Mod seçimi */}
       <div style={{ marginBottom: 18 }}>
