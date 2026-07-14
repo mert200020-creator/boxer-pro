@@ -199,7 +199,12 @@ function pickVoice(lang) {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices() || [];
   const want = lang === "en" ? "en" : "tr";
-  return voices.find(v => v.lang && v.lang.toLowerCase().startsWith(want)) || null;
+  const matches = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(want));
+  if (matches.length === 0) return null;
+  // Cihazda birden fazla ses varsa, daha net/güçlü duyulan "gelişmiş" kalite sesleri tercih et
+  // (iOS: "Enhanced"/"Premium", Android/Chrome: "Neural"/"Natural" gibi etiketlerle gelir)
+  const quality = matches.find(v => /enhanced|premium|neural|natural|studio/i.test(v.name));
+  return quality || matches[0];
 }
 function speak(text, lang) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -208,8 +213,8 @@ function speak(text, lang) {
     u.lang = lang === "en" ? "en-US" : "tr-TR";
     const v = pickVoice(lang);
     if (v) u.voice = v;
-    // Hoca tonu: net ve önde duyulsun (volume API'de zaten max=1.0; rate biraz yavaş = daha anlaşılır/belirgin)
-    u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+    // Hoca tonu: net, güçlü ve önde duyulsun — hafif hızlı ve az daha kalın perde, gerçek köşe hocası gibi
+    u.rate = 1.08; u.pitch = 0.92; u.volume = 1.0;
     // Konuşma bitince Web Audio motorunu uyandır (iOS'te konuşma sonrası bipler kesilmesin)
     u.onend = () => { try { getMasterBus(); } catch {} };
     window.speechSynthesis.cancel();
@@ -286,24 +291,39 @@ function useWakeLock(active) {
 }
 
 // Combo komutları (dile göre) — gerçek hoca gibi: kombinasyonlar + teknik + motivasyon
+// Gerçek salon usulü: hoca çoğunlukla NUMARA ile kombinasyon çağırır (1=direk, 2=kroşe/cross,
+// 3=ön kroşe, 4=arka kroşe, 5=ön aparkat, 6=arka aparkat), arada isimli teknik ve kısa kesik
+// motivasyon sözleri karışır — gerçek bir köşe hocasının kadansına yakın olsun diye orantı bu şekilde.
 const COMBO_CALLS = {
   tr: [
-    "Bir, iki!", "Bir, iki, üç!", "Sol direk, sağ kroşe!", "Çift sol direk!",
-    "Sol-sağ-sol kroşe!", "Bir, iki, sol kroşe, sağ!", "Aparkat, kroşe!",
+    // Numaralı kombinasyonlar (gerçek salon dili — ağırlıklı çoğunluk)
+    "Bir, iki!", "Bir, iki, üç!", "Bir, bir, iki!", "Bir, iki, üç, iki!", "İki, üç, iki!",
+    "Üç, iki!", "Bir, altı, üç, iki!", "Bir, iki, beş, iki!", "İki, üç, altı, üç!",
+    "Altı, üç, iki!", "Bir, iki, üç, dört!", "Beş, iki!", "Bir, dört, üç!",
+    "İki, üç, iki, üç!", "Bir, bir, iki, üç, iki!", "Bir, iki, altı!", "Üç, iki, üç!",
+    // İsimli teknik kombinasyonlar
+    "Sol direk, sağ kroşe!", "Çift sol direk!", "Sol-sağ-sol kroşe!", "Aparkat, kroşe!",
     "Sağ aparkat, sol kroşe!", "Vücuda sol, başa sağ!", "Sol direk, vücuda sağ!",
     "Kaçır ve karşılık ver!", "Eğil, sol kroşe!", "Bloke et, sağ!", "Geri çekil, sol direk!",
-    "Ellerini yukarda tut!", "Çeneni indir!", "Ayaklarını oynat!", "Nefes al!",
-    "Belinden dön!", "Geri dönüşü unutma!", "Daha hızlı!", "Güçlü bitir!",
-    "Hadi, baskıyı sürdür!", "Durma, devam!", "Şampiyon gibi!", "Son gücüne kadar!",
+    // Kısa, kesik hoca nidaları (gerçek köşeden bağırma tonu)
+    "Hadi!", "Bas!", "Yükle!", "Çık!", "Şimdi!", "Sık!", "Tekrar!", "Daha hızlı!",
+    "Ellerini yukarda tut!", "Çeneni indir!", "Ayaklarını oynat!", "Belinden dön!",
+    "Baskıyı sürdür!", "Durma, devam!", "Son gücüne kadar!", "Güçlü bitir!",
   ],
   en: [
-    "One, two!", "One, two, three!", "Jab, cross!", "Double jab!",
-    "Jab-cross-lead hook!", "One, two, hook, cross!", "Uppercut, hook!",
+    // Numbered combos (real gym numbering)
+    "One, two!", "One, two, three!", "One, one, two!", "One, two, three, two!", "Two, three, two!",
+    "Three, two!", "One, six, three, two!", "One, two, five, two!", "Two, three, six, three!",
+    "Six, three, two!", "One, two, three, four!", "Five, two!", "One, four, three!",
+    "Two, three, two, three!", "One, one, two, three, two!", "One, two, six!", "Three, two, three!",
+    // Named technique combos
+    "Jab, cross!", "Double jab!", "Jab-cross-lead hook!", "Uppercut, hook!",
     "Right uppercut, left hook!", "Body, head!", "Jab, body shot!",
     "Slip and counter!", "Roll, left hook!", "Block, cross!", "Step back, jab!",
-    "Hands up!", "Chin down!", "Move your feet!", "Breathe!",
-    "Turn your hips!", "Snap it back!", "Faster!", "Finish strong!",
-    "Keep the pressure!", "Don't stop!", "Like a champion!", "Empty the tank!",
+    // Short sharp coach barks
+    "Let's go!", "Push!", "Load up!", "Get out!", "Now!", "Snap it!", "Again!", "Faster!",
+    "Hands up!", "Chin down!", "Move your feet!", "Turn your hips!",
+    "Keep the pressure!", "Don't stop!", "Empty the tank!", "Finish strong!",
   ],
 };
 // Faza/kategoriye göre özel komut havuzu — hoca, yapılan işe uygun konuşur
