@@ -293,7 +293,8 @@ function useWakeLock(active) {
 // Combo komutları (dile göre) — gerçek hoca gibi: kombinasyonlar + teknik + motivasyon
 // Gerçek salon usulü: hoca çoğunlukla NUMARA ile kombinasyon çağırır (1=direk, 2=kroşe/cross,
 // 3=ön kroşe, 4=arka kroşe, 5=ön aparkat, 6=arka aparkat), arada isimli teknik ve kısa kesik
-// motivasyon sözleri karışır — gerçek bir köşe hocasının kadansına yakın olsun diye orantı bu şekilde.
+// motivasyon sözleri karışır. İki ayrı havuz: COMBOS (uygulanması zaman ister → daha uzun ara)
+// ve BARKS (kısa nida, "Daha hızlı!" gibi → hemen ardından yeni bir kombinasyon gelir).
 const COMBO_CALLS = {
   tr: [
     // Numaralı kombinasyonlar (gerçek salon dili — ağırlıklı çoğunluk)
@@ -305,10 +306,6 @@ const COMBO_CALLS = {
     "Sol direk, sağ kroşe!", "Çift sol direk!", "Sol-sağ-sol kroşe!", "Aparkat, kroşe!",
     "Sağ aparkat, sol kroşe!", "Vücuda sol, başa sağ!", "Sol direk, vücuda sağ!",
     "Kaçır ve karşılık ver!", "Eğil, sol kroşe!", "Bloke et, sağ!", "Geri çekil, sol direk!",
-    // Kısa, kesik hoca nidaları (gerçek köşeden bağırma tonu)
-    "Hadi!", "Bas!", "Yükle!", "Çık!", "Şimdi!", "Sık!", "Tekrar!", "Daha hızlı!",
-    "Ellerini yukarda tut!", "Çeneni indir!", "Ayaklarını oynat!", "Belinden dön!",
-    "Baskıyı sürdür!", "Durma, devam!", "Son gücüne kadar!", "Güçlü bitir!",
   ],
   en: [
     // Numbered combos (real gym numbering)
@@ -320,7 +317,16 @@ const COMBO_CALLS = {
     "Jab, cross!", "Double jab!", "Jab-cross-lead hook!", "Uppercut, hook!",
     "Right uppercut, left hook!", "Body, head!", "Jab, body shot!",
     "Slip and counter!", "Roll, left hook!", "Block, cross!", "Step back, jab!",
-    // Short sharp coach barks
+  ],
+};
+// Kısa, kesik hoca nidaları — bunlardan sonra bir sonraki kombinasyon hızlıca (~3sn) gelir
+const BARK_CALLS = {
+  tr: [
+    "Hadi!", "Bas!", "Yükle!", "Çık!", "Şimdi!", "Sık!", "Tekrar!", "Daha hızlı!",
+    "Ellerini yukarda tut!", "Çeneni indir!", "Ayaklarını oynat!", "Belinden dön!",
+    "Baskıyı sürdür!", "Durma, devam!", "Son gücüne kadar!", "Güçlü bitir!",
+  ],
+  en: [
     "Let's go!", "Push!", "Load up!", "Get out!", "Now!", "Snap it!", "Again!", "Faster!",
     "Hands up!", "Chin down!", "Move your feet!", "Turn your hips!",
     "Keep the pressure!", "Don't stop!", "Empty the tank!", "Finish strong!",
@@ -4190,6 +4196,8 @@ function TimerMode({ lang, soundOn, onSaved }) {
   const [round, setRound] = useState(1);
   const [left, setLeft] = useState(cfg.prep || 0);
   const iv = useRef(null);
+  const leftRef = useRef(0); // combo çağırıcının, effect'i yeniden başlatmadan "kalan süre"yi okuyabilmesi için
+  const lastPhraseRef = useRef(""); // art arda aynı sözün tekrarını engellemek için
   const cue = useRef({ ten:false, t3:false, t2:false, t1:false });
   const [combo, setCombo] = useState(false); // kombinasyon çağırıcı
   const comboT = useRef(null);
@@ -4200,6 +4208,7 @@ function TimerMode({ lang, soundOn, onSaved }) {
   const shakeCooldown = useRef(0);
 
   useEffect(() => { saveTimerCfg(cfg); }, [cfg]);
+  useEffect(() => { leftRef.current = left; }, [left]);
 
   const phaseTotal = phase === "prep" ? (cfg.prep||1) : phase === "work" ? cfg.work : cfg.rest;
   const accent = phase === "work" ? RED : phase === "rest" ? "#10b981" : GOLD;
@@ -4248,16 +4257,40 @@ function TimerMode({ lang, soundOn, onSaved }) {
     if (left === 1 && phaseTotal > 2 && !c.t1) { c.t1 = true; if (soundOn) playCountTick(true); haptic(HAPTIC.tap); }
   }, [left, running]);
 
-  // Kombinasyon çağırıcı — sadece çalışma (work) fazında, rastgele combo seslendir
+  // Kombinasyon çağırıcı — sadece çalışma (work) fazında, rastgele combo/nida seslendir
   useEffect(() => {
     if (!(running && phase === "work" && combo)) { clearTimeout(comboT.current); return; }
     let stop = false;
+    const pick = (arr) => {
+      if (arr.length <= 1) return arr[0];
+      let choice;
+      do { choice = arr[Math.floor(Math.random() * arr.length)]; } while (choice === lastPhraseRef.current);
+      return choice;
+    };
+    const say = (text) => { lastPhraseRef.current = text; speak(text, lang); haptic(HAPTIC.tap); };
+    const estSpeechMs = (text) => 350 + text.split(/\s+/).length * 230; // konuşma süresini kabaca tahmin et, kesilmesin
     const fire = () => {
       if (stop) return;
-      const arr = COMBO_CALLS[lang] || COMBO_CALLS.tr;
-      speak(arr[Math.floor(Math.random() * arr.length)], lang);
-      haptic(HAPTIC.tap);
-      comboT.current = setTimeout(fire, 3500 + Math.random() * 2500); // 3.5–6 sn arası
+      const combos = COMBO_CALLS[lang] || COMBO_CALLS.tr;
+      const barks = BARK_CALLS[lang] || BARK_CALLS.tr;
+      // Round ilerledikçe (kalan süre azaldıkça) hoca daha sık ve daha kesik konuşur — gerçek yorgunluk baskısı
+      const totalWork = cfg.work || 1;
+      const elapsedFrac = 1 - Math.min(1, leftRef.current / totalWork); // 0 (round başı) → 1 (round sonu)
+      const barkChance = 0.28 + elapsedFrac * 0.22; // %28 → %50 arası
+      const isBark = Math.random() < barkChance;
+      const arr = isBark ? barks : combos;
+      const phrase = pick(arr);
+      say(phrase);
+      // Kombinasyondan sonra bazen (round ilerledikçe daha sık) hızlı bir yönlendirme nidası ekle —
+      // gerçek hocaların "1-2! ...Çık!" tarzı kombinasyon+direktif kalıbı
+      const chainChance = 0.25 + elapsedFrac * 0.2;
+      if (!isBark && Math.random() < chainChance) {
+        const wait = estSpeechMs(phrase) + 150 + Math.random() * 250;
+        setTimeout(() => { if (!stop) say(pick(barks)); }, wait);
+      }
+      const speedFactor = 1 - elapsedFrac * 0.35; // round sonuna doğru %35'e kadar hızlan
+      const baseDelay = isBark ? (2800 + Math.random() * 400) : (2600 + Math.random() * 1600);
+      comboT.current = setTimeout(fire, Math.max(1500, baseDelay * speedFactor));
     };
     comboT.current = setTimeout(fire, 1200);
     return () => { stop = true; clearTimeout(comboT.current); };
