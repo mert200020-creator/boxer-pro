@@ -5787,12 +5787,6 @@ function AppInner() {
         })()}
         {/* ── ANA (Home): vitrin — çipler + yana kaydırılan kartlar ── */}
         {tab === "home" && !favProgram && (() => {
-          const quickPresets = [
-            { min: 15, label: lang === "en" ? "Quick" : "Hızlı", sub: "15 dk", g1: "#ef4444", g2: "#b91c1c", icon: "⚡" },
-            { min: 30, label: lang === "en" ? "Standard" : "Standart", sub: "30 dk", g1: "#f59e0b", g2: "#b45309", icon: "🥊" },
-            { min: 45, label: lang === "en" ? "Full" : "Tam", sub: "45 dk", g1: "#8b5cf6", g2: "#6d28d9", icon: "🔥" },
-            { min: 60, label: lang === "en" ? "Pro" : "Pro", sub: "60 dk", g1: "#10b981", g2: "#047857", icon: "🏆" },
-          ];
           const chip = (icon, label, onClick, gold) => (
             <button onClick={onClick} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 7, background: CARD, border: `1px solid ${gold ? GOLD + "88" : LINE}`, color: gold ? GOLD : "#ddd", borderRadius: 22, padding: "10px 16px", fontSize: 13.5, fontWeight: 800, cursor: "pointer" }}>
               <span style={{ fontSize: 15 }}>{icon}</span>{label}
@@ -5851,27 +5845,6 @@ function AppInner() {
                   <div style={{ color: "#fff", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative", textShadow: "0 2px 12px rgba(0,0,0,0.7)" }}>{lang === "en" ? "Your records & badges" : "Rekorların & rozetlerin"}</div>
                   <div style={{ position: "absolute", left: 22, bottom: 22, display: "inline-flex", alignItems: "center", gap: 8, background: GOLD, color: "#1a1205", borderRadius: 22, padding: "10px 16px", fontSize: 13, fontWeight: 900 }}>📊 {lang === "en" ? "VIEW" : "GÖR"}</div>
                 </button>
-              </div>
-
-              {/* HIZLI ANTRENMANLAR */}
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
-                <div style={{ color: "#fff", fontSize: 16, fontWeight: 900, letterSpacing: 0.3 }}>{lang === "en" ? "QUICK WORKOUTS" : "HIZLI ANTRENMANLAR"}</div>
-                <button onClick={() => { setAutoInitMin(null); setQuickAutoGen(false); setAutoLevel(null); setTrainSub("auto"); setTab("train"); }} style={{ background: "none", border: "none", color: "#888", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{lang === "en" ? "see all ›" : "tümü ›"}</button>
-              </div>
-              <div style={{ color: "#777", fontSize: 12.5, marginBottom: 14 }}>{lang === "en" ? "Tap a duration — we build it instantly." : "Bir süreye dokun — anında oluştururuz."}</div>
-              <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, marginBottom: 26, scrollbarWidth: "none" }}>
-                {quickPresets.map(p => (
-                  <button key={p.min} onClick={() => { setAutoInitMin(p.min); setQuickAutoGen(true); setTrainSub("auto"); setTab("train"); }} style={{ flexShrink: 0, width: 130, height: 150, borderRadius: 18, border: "none", cursor: "pointer", padding: 16, textAlign: "left", position: "relative", overflow: "hidden", background: `linear-gradient(155deg, ${p.g1}, ${p.g2})`, boxShadow: "0 8px 22px rgba(0,0,0,0.35)" }}>
-                    <svg viewBox="0 0 130 150" preserveAspectRatio="xMidYMid slice" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
-                      <g stroke="#ffffff" strokeWidth="10" opacity="0.06">
-                        {[-40, 0, 40, 80, 120].map((x, i) => <line key={i} x1={x} y1="150" x2={x + 90} y2="0" />)}
-                      </g>
-                    </svg>
-                    <div style={{ fontSize: 30, position: "relative" }}>{p.icon}</div>
-                    <div style={{ position: "absolute", left: 16, bottom: 30, color: "#fff", fontSize: 17, fontWeight: 900 }}>{p.label}</div>
-                    <div style={{ position: "absolute", left: 16, bottom: 12, color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 700 }}>{p.sub}</div>
-                  </button>
-                ))}
               </div>
 
               {/* FAVORİLER */}
