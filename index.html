@@ -235,20 +235,52 @@ const HAPTIC = {
 // ─── Wake Lock (antrenman sırasında ekran uyumasın) ───────────────────────────
 function useWakeLock(active) {
   useEffect(() => {
-    if (!active || typeof navigator === "undefined" || !navigator.wakeLock) return;
+    if (!active || typeof navigator === "undefined") return;
     let lock = null;
     let released = false;
-    const request = async () => {
+
+    // 1) Native Wake Lock API (destekleyen tarayıcılarda birincil yöntem)
+    const requestNative = async () => {
+      if (!navigator.wakeLock) return;
       try { lock = await navigator.wakeLock.request("screen"); } catch {}
     };
-    request();
-    // Sekme tekrar öne gelince kilidi yenile (tarayıcı otomatik bırakır)
-    const onVisible = () => { if (!released && document.visibilityState === "visible") request(); };
+    requestNative();
+    const onVisible = () => { if (!released && document.visibilityState === "visible") requestNative(); };
     document.addEventListener("visibilitychange", onVisible);
+
+    // 2) Yedek yöntem: iOS'ta (özellikle "Ana Ekrana Ekle" ile kurulmuş PWA'da) Wake Lock API
+    // güvenilir değil. Görünmez, sessiz bir "video" (canvas'tan üretilen akış) oynatarak
+    // tarayıcının ekranı kilitlememesini sağlıyoruz — dışarıdan dosya gerektirmez.
+    let video = null;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2; canvas.height = 2;
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.fillRect(0, 0, 2, 2);
+      const stream = canvas.captureStream ? canvas.captureStream(1) : null;
+      if (stream) {
+        video = document.createElement("video");
+        video.muted = true;
+        video.setAttribute("muted", "");
+        video.setAttribute("playsinline", "");
+        video.setAttribute("webkit-playsinline", "");
+        video.loop = true;
+        video.style.position = "fixed";
+        video.style.width = "1px";
+        video.style.height = "1px";
+        video.style.opacity = "0";
+        video.style.pointerEvents = "none";
+        video.srcObject = stream;
+        document.body.appendChild(video);
+        video.play().catch(() => {});
+      }
+    } catch {}
+
     return () => {
       released = true;
       document.removeEventListener("visibilitychange", onVisible);
       try { lock && lock.release(); } catch {}
+      try { if (video) { video.pause(); video.srcObject = null; video.remove(); } } catch {}
     };
   }, [active]);
 }
@@ -4116,12 +4148,18 @@ function TrainingJournal({ lang, onStartFirst }) {
 // ─── Koşu Modu ────────────────────────────────────────────────────────────────
 // ─── Gelişmiş Timer (kendi antrenmanın için round zamanlayıcı) ─────────────────
 const TIMER_CFG_KEY = "boxerpro_timer_cfg_v1";
+const TIMER_FAVS_KEY = "boxerpro_timer_favs_v1";
 function loadTimerCfg() {
-  const def = { rounds: 3, work: 180, rest: 60, prep: 10 };
+  const def = { rounds: 3, work: 180, rest: 60, prep: 10, preSoundOn: true, preSoundSec: 10, shakeOn: false };
   if (typeof window === "undefined") return def;
   try { return { ...def, ...JSON.parse(window.localStorage.getItem(TIMER_CFG_KEY) || "{}") }; } catch { return def; }
 }
 function saveTimerCfg(c) { try { window.localStorage.setItem(TIMER_CFG_KEY, JSON.stringify(c)); } catch {} }
+function loadTimerFavs() {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(window.localStorage.getItem(TIMER_FAVS_KEY) || "[]"); } catch { return []; }
+}
+function saveTimerFavs(f) { try { window.localStorage.setItem(TIMER_FAVS_KEY, JSON.stringify(f)); } catch {} }
 const fmtMS = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
 function TimerMode({ lang, soundOn, onSaved }) {
@@ -4135,6 +4173,11 @@ function TimerMode({ lang, soundOn, onSaved }) {
   const cue = useRef({ ten:false, t3:false, t2:false, t1:false });
   const [combo, setCombo] = useState(false); // kombinasyon çağırıcı
   const comboT = useRef(null);
+  const [favs, setFavs] = useState(loadTimerFavs);
+  const [showFavs, setShowFavs] = useState(false);
+  const [savingFav, setSavingFav] = useState(false);
+  const [favName, setFavName] = useState("");
+  const shakeCooldown = useRef(0);
 
   useEffect(() => { saveTimerCfg(cfg); }, [cfg]);
 
@@ -4174,11 +4217,12 @@ function TimerMode({ lang, soundOn, onSaved }) {
     return () => clearInterval(iv.current);
   }, [running, phase, round]);
 
-  // Sesli uyarılar (10sn + 3-2-1)
+  // Sesli uyarılar (Pre-Sound: ayarlanabilir saniye + son 3-2-1)
   useEffect(() => {
     if (!running || phase === "done") return;
     const c = cue.current;
-    if (left === 10 && phaseTotal > 11 && !c.ten) { c.ten = true; if (soundOn) playTenLeft(); haptic(HAPTIC.warning); }
+    const warnAt = cfg.preSoundSec || 10;
+    if (cfg.preSoundOn && left === warnAt && phaseTotal > warnAt + 1 && !c.ten) { c.ten = true; if (soundOn) playTenLeft(); haptic(HAPTIC.warning); }
     if (left === 3 && phaseTotal > 4 && !c.t3) { c.t3 = true; if (soundOn) playCountTick(false); haptic(HAPTIC.tap); }
     if (left === 2 && phaseTotal > 3 && !c.t2) { c.t2 = true; if (soundOn) playCountTick(false); haptic(HAPTIC.tap); }
     if (left === 1 && phaseTotal > 2 && !c.t1) { c.t1 = true; if (soundOn) playCountTick(true); haptic(HAPTIC.tap); }
@@ -4199,6 +4243,29 @@ function TimerMode({ lang, soundOn, onSaved }) {
     return () => { stop = true; clearTimeout(comboT.current); };
   }, [running, phase, combo, lang]);
 
+  // Sallama ile duraklat/devam et — aktif timer ekranında, ayardan açıksa
+  useEffect(() => {
+    if (!(active && cfg.shakeOn) || typeof window === "undefined") return;
+    const THRESHOLD = 18; // ivme farkı eşiği
+    let last = { x: null, y: null, z: null };
+    const onMotion = (e) => {
+      const a = e.accelerationIncludingGravity || e.acceleration;
+      if (!a || a.x == null) return;
+      if (last.x !== null) {
+        const delta = Math.abs(a.x - last.x) + Math.abs(a.y - last.y) + Math.abs(a.z - last.z);
+        const now = Date.now();
+        if (delta > THRESHOLD && now - shakeCooldown.current > 1200) {
+          shakeCooldown.current = now;
+          setRunning(r => !r);
+          haptic(HAPTIC.warning);
+        }
+      }
+      last = { x: a.x, y: a.y, z: a.z };
+    };
+    window.addEventListener("devicemotion", onMotion);
+    return () => window.removeEventListener("devicemotion", onMotion);
+  }, [active, cfg.shakeOn]);
+
   const advance = () => {
     cue.current = { ten:false, t3:false, t2:false, t1:false };
     if (phase === "prep") { setPhase("work"); setLeft(cfg.work); if (soundOn) playNextExercise(); haptic(HAPTIC.success); return; }
@@ -4213,6 +4280,28 @@ function TimerMode({ lang, soundOn, onSaved }) {
 
   const skip = () => { clearInterval(iv.current); advance(); };
   const setC = (k,v) => setCfg(c => ({ ...c, [k]: v }));
+
+  const requestShakePermission = async () => {
+    try {
+      if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+        const res = await DeviceMotionEvent.requestPermission();
+        if (res !== "granted") return false;
+      }
+      return true;
+    } catch { return true; } // izin API'si olmayan cihazlarda (Android vb.) zaten gerekmiyor
+  };
+  const toggleShake = async () => {
+    if (!cfg.shakeOn) { const ok = await requestShakePermission(); if (!ok) return; }
+    setC("shakeOn", !cfg.shakeOn);
+  };
+
+  const applyFav = (f) => { setCfg(c => ({ ...c, rounds: f.rounds, work: f.work, rest: f.rest, prep: f.prep })); setShowFavs(false); };
+  const deleteFav = (id) => { const next = favs.filter(f => f.id !== id); setFavs(next); saveTimerFavs(next); };
+  const confirmSaveFav = () => {
+    const name = favName.trim() || `${cfg.rounds}×${fmtMS(cfg.work)}`;
+    const next = [...favs, { id: `f${Date.now()}`, name, rounds: cfg.rounds, work: cfg.work, rest: cfg.rest, prep: cfg.prep }];
+    setFavs(next); saveTimerFavs(next); setSavingFav(false); setFavName("");
+  };
 
   // ── KURULUM EKRANI ──
   if (!active) {
@@ -4230,6 +4319,28 @@ function TimerMode({ lang, soundOn, onSaved }) {
     return (
       <div>
         <div style={{ color: "#888", fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>{lang === "en" ? "Set up your own round timer for shadow, bag or any training. Rounds, work, rest — you decide." : "Kendi round zamanlayıcını kur: gölge, torba ya da istediğin antrenman için. Round, çalışma, dinlenme — hepsi sana kalmış."}</div>
+
+        {/* Favoriler */}
+        {favs.length > 0 && (
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 14, paddingBottom: 2 }}>
+            {favs.map(f => (
+              <div key={f.id} onClick={() => applyFav(f)} style={{ flexShrink: 0, background: CARD, border: `1px solid ${GOLD}44`, borderRadius: 12, padding: "10px 14px", cursor: "pointer", position: "relative" }}>
+                <div style={{ color: GOLD, fontSize: 11, fontWeight: 900 }}>⭐ {f.name}</div>
+                <div style={{ color: "#777", fontSize: 10, marginTop: 2 }}>{f.rounds} × {fmtMS(f.work)}</div>
+                <button onClick={(e) => { e.stopPropagation(); deleteFav(f.id); }} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "#333", border: "none", color: "#999", fontSize: 11, lineHeight: 1, cursor: "pointer" }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {savingFav ? (
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            <input autoFocus value={favName} onChange={e => setFavName(e.target.value)} placeholder={lang === "en" ? "Preset name (optional)" : "Ayar adı (opsiyonel)"} style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 12px", color: "#fff", fontSize: 13 }} />
+            <button onClick={confirmSaveFav} style={{ background: GOLD, border: "none", borderRadius: 10, padding: "0 16px", color: "#000", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>{lang === "en" ? "Save" : "Kaydet"}</button>
+          </div>
+        ) : (
+          <button onClick={() => setSavingFav(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", background: "transparent", border: `1px dashed ${GOLD}55`, borderRadius: 12, padding: "10px", color: GOLD, fontSize: 12.5, fontWeight: 800, cursor: "pointer", marginBottom: 14 }}>☆ {lang === "en" ? "Save as favorite" : "Favorilere Ekle"}</button>
+        )}
+
         <Stepper label={lang==="en"?"Rounds":"Round sayısı"} val={cfg.rounds} disp={cfg.rounds} min={1} max={20} step={1} onCh={v=>setC("rounds",v)} />
         <Stepper label={lang==="en"?"Round time":"Round süresi"} val={cfg.work} disp={fmtMS(cfg.work)} min={10} max={600} step={10} onCh={v=>setC("work",v)} />
         <Stepper label={lang==="en"?"Rest":"Dinlenme"} val={cfg.rest} disp={cfg.rest===0?(lang==="en"?"None":"Yok"):fmtMS(cfg.rest)} min={0} max={180} step={5} onCh={v=>setC("rest",v)} />
@@ -4242,6 +4353,26 @@ function TimerMode({ lang, soundOn, onSaved }) {
           </span>
           <button onClick={() => { const nx = !combo; setCombo(nx); if (nx) primeSpeech(); }} style={{ flexShrink: 0, background: combo ? RED : "#1e1e1e", color: combo ? "#fff" : "#666", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{combo ? (lang==="en"?"ON":"AÇIK") : (lang==="en"?"OFF":"KAPALI")}</button>
         </div>
+
+        {/* Pre-Sound: round bitmeden önce uyarı sesi */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: cfg.preSoundOn ? `${GOLD}12` : CARD, border: `1px solid ${cfg.preSoundOn ? GOLD+"55" : LINE}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10 }}>
+          <span style={{ minWidth: 0, paddingRight: 10 }}>
+            <span style={{ display: "block", color: "#ddd", fontSize: 14, fontWeight: 700 }}>🔔 {lang==="en"?"Pre-Sound":"Ön Uyarı Sesi"}</span>
+            <span style={{ display: "block", color: "#888", fontSize: 11.5, marginTop: 2, lineHeight: 1.35 }}>{lang==="en"?`Warns ${cfg.preSoundSec}s before each round ends.`:`Her round bitmeden ${cfg.preSoundSec} sn önce uyarır.`}</span>
+          </span>
+          <button onClick={() => setC("preSoundOn", !cfg.preSoundOn)} style={{ flexShrink: 0, background: cfg.preSoundOn ? GOLD : "#1e1e1e", color: cfg.preSoundOn ? "#000" : "#666", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{cfg.preSoundOn ? (lang==="en"?"ON":"AÇIK") : (lang==="en"?"OFF":"KAPALI")}</button>
+        </div>
+        {cfg.preSoundOn && <Stepper label={lang==="en"?"Warn before":"Kaç sn önce"} val={cfg.preSoundSec} disp={cfg.preSoundSec+" sn"} min={3} max={59} step={1} onCh={v=>setC("preSoundSec",v)} />}
+
+        {/* Shake: sallayarak duraklat/devam et */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: cfg.shakeOn ? `${RED}14` : CARD, border: `1px solid ${cfg.shakeOn ? RED+"66" : LINE}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10 }}>
+          <span style={{ minWidth: 0, paddingRight: 10 }}>
+            <span style={{ display: "block", color: "#ddd", fontSize: 14, fontWeight: 700 }}>📳 {lang==="en"?"Shake to pause":"Sallayarak Duraklat"}</span>
+            <span style={{ display: "block", color: "#888", fontSize: 11.5, marginTop: 2, lineHeight: 1.35 }}>{lang==="en"?"Shake your phone during the timer to pause/resume.":"Timer çalışırken telefonu salla, duraklat/devam et."}</span>
+          </span>
+          <button onClick={toggleShake} style={{ flexShrink: 0, background: cfg.shakeOn ? RED : "#1e1e1e", color: cfg.shakeOn ? "#fff" : "#666", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>{cfg.shakeOn ? (lang==="en"?"ON":"AÇIK") : (lang==="en"?"OFF":"KAPALI")}</button>
+        </div>
+
         <div style={{ textAlign: "center", color: "#666", fontSize: 12.5, fontWeight: 700, margin: "6px 0 16px" }}>{lang==="en"?"Total":"Toplam"}: ~{totalMin} {lang==="en"?"min":"dk"}</div>
         <button onClick={start} style={{ width: "100%", background: `linear-gradient(135deg, ${RED}, #ff6b6b)`, color: "#fff", border: "none", borderRadius: 16, padding: "18px", fontSize: 18, fontWeight: 900, cursor: "pointer", letterSpacing: 1, boxShadow: `0 8px 26px ${RED}55` }}>▶ {lang==="en"?"START TIMER":"TIMER'I BAŞLAT"}</button>
       </div>
@@ -4256,11 +4387,14 @@ function TimerMode({ lang, soundOn, onSaved }) {
     <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 200, maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 20px)" }}>
       {phase !== "done" ? (
         <>
-          <div style={{ color: accent, fontSize: 15, fontWeight: 900, letterSpacing: 3, marginBottom: 6 }}>{phaseLabel}</div>
-          <div style={{ color: "#888", fontSize: 14, fontWeight: 700, marginBottom: phase === "rest" ? 8 : 16 }}>{lang==="en"?"Round":"Round"} {round}/{cfg.rounds}</div>
+          <div style={{ color: accent, fontSize: 15, fontWeight: 900, letterSpacing: 3, marginBottom: 10 }}>{phaseLabel}</div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: `linear-gradient(135deg, ${GOLD}, #ffcf4d)`, borderRadius: 20, padding: "8px 20px", marginBottom: phase === "rest" ? 10 : 18, boxShadow: `0 4px 16px ${GOLD}44` }}>
+            <span style={{ fontSize: 13 }}>★</span>
+            <span style={{ color: "#1a1200", fontSize: 14, fontWeight: 900 }}>{lang==="en"?"Round":"Round"} {round} {lang==="en"?"of":"/"} {cfg.rounds}</span>
+          </div>
           {phase === "rest" && <div style={{ color: "#8ab4f8", fontSize: 13, fontWeight: 600, fontStyle: "italic", marginBottom: 16, maxWidth: 280, textAlign: "center" }}>"{REST_QUOTES[lang][round % REST_QUOTES[lang].length]}"</div>}
           <button onClick={() => { const nx = !combo; setCombo(nx); if (nx) primeSpeech(); }} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: combo ? `${RED}22` : "#ffffff08", border: `1px solid ${combo ? RED : LINE}`, color: combo ? "#fff" : "#888", borderRadius: 20, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", marginBottom: 18 }}>🎙️ {lang==="en"?"Combo caller":"Combo çağırıcı"}: {combo ? (lang==="en"?"ON":"AÇIK") : (lang==="en"?"OFF":"KAPALI")}</button>
-          <div style={{ position: "relative", width: 300, height: 300, marginBottom: 24 }}>
+          <div style={{ position: "relative", width: 300, height: 300, marginBottom: 4 }}>
             <svg width="300" height="300" style={{ transform: "rotate(-90deg)" }}>
               <circle cx="150" cy="150" r={R} fill="none" stroke="#1a1a1f" strokeWidth="14" />
               <circle cx="150" cy="150" r={R} fill="none" stroke={accent} strokeWidth="14" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} style={{ transition: "stroke-dashoffset 1s linear" }} />
@@ -4269,7 +4403,11 @@ function TimerMode({ lang, soundOn, onSaved }) {
               <div style={{ color: "#fff", fontSize: 64, fontWeight: 900, fontVariantNumeric: "tabular-nums", letterSpacing: -2 }}>{fmtMS(left)}</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          {/* Yansıma efekti */}
+          <div aria-hidden="true" style={{ color: accent, fontSize: 40, fontWeight: 900, fontVariantNumeric: "tabular-nums", letterSpacing: -1, transform: "scaleY(-1)", opacity: 0.14, marginTop: -6, marginBottom: 18, WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.9), transparent 85%)", maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.9), transparent 85%)" }}>{fmtMS(left)}</div>
+
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <button onClick={() => { const ok = window.confirm ? window.confirm(lang==="en"?"Restart from round 1?":"Round 1'den yeniden başlansın mı?") : true; if (ok) { stopAll(); start(); } }} aria-label={lang==="en"?"Reset":"Sıfırla"} style={{ width: 48, height: 48, borderRadius: "50%", background: CARD, border: `1px solid ${LINE}`, color: "#888", fontSize: 16, cursor: "pointer" }}>↺</button>
             <button onClick={exit} style={{ width: 56, height: 56, borderRadius: "50%", background: CARD, border: `1px solid ${LINE}`, color: "#888", fontSize: 18, cursor: "pointer" }}>✕</button>
             <button onClick={() => setRunning(r => !r)} style={{ width: 76, height: 76, borderRadius: "50%", background: accent, border: "none", color: "#fff", fontSize: 26, cursor: "pointer", boxShadow: `0 6px 22px ${accent}66` }}>{running ? "⏸" : "▶"}</button>
             <button onClick={skip} style={{ width: 56, height: 56, borderRadius: "50%", background: CARD, border: `1px solid ${LINE}`, color: "#888", fontSize: 18, cursor: "pointer" }}>⏭</button>
