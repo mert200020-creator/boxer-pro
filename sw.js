@@ -1,10 +1,11 @@
 // BOXER PRO service worker — kurulabilirlik + hızlı yeniden yükleme
-const CACHE = 'boxerpro-v2';
+const CACHE = 'boxerpro-v4';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
-  './icon-192.png', './icon-512.png', './apple-touch-icon.png',
+  './icon-192.png?v=3', './icon-512.png?v=3', './apple-touch-icon.png?v=3',
   './card-gloves.jpg', './card-ring.jpg', './card-champion.jpg',
-  './banner-train.jpg', './banner-tech.jpg', './banner-prog.jpg'
+  './banner-train.jpg', './banner-tech.jpg', './banner-prog.jpg',
+  './level-beginner.jpg?v=2', './level-intermediate.jpg?v=2', './level-advanced.jpg?v=2', './level-mix.jpg?v=2'
 ];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})).then(() => self.skipWaiting()));
