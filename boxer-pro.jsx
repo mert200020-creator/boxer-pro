@@ -130,6 +130,12 @@ function playCountTick(last = false) {
   bellStrike(last ? 1320 : 1047, 0, last ? 0.85 : 0.65, last ? 0.7 : 0.4);
 }
 
+// KOMBİNASYON ÇAĞRISI ÖNCESİ: kısa, keskin "dikkat" tonu — sesli komuttan hemen önce çalar,
+// TTS sesi API tarafından sınırlı olsa da bu ton kendi ses motorumuzdan geçtiği için güçlü ve net duyulur.
+function playComboCue() {
+  bellStrike(1568, 0, 0.55, 0.22);
+}
+
 // ─── Sesli Komut (SpeechSynthesis — Hayali Antrenör) ──────────────────────────
 let _voicesReady = false;
 function primeSpeech() {
@@ -4208,7 +4214,7 @@ function TimerMode({ lang, soundOn, onSaved }) {
     if (left === 1 && phaseTotal > 2 && !c.t1) { c.t1 = true; if (soundOn) playCountTick(true); haptic(HAPTIC.tap); }
   }, [left, running]);
 
-  // Kombinasyon çağırıcı — sadece çalışma (work) fazında, rastgele combo/nida seslendir
+  // Kombinasyon çağırıcı — sadece çalışma (work) fazında, sadece TEKNİK kombinasyon seslendir (nida/motivasyon yok)
   useEffect(() => {
     if (!(running && phase === "work" && combo)) { clearTimeout(comboT.current); return; }
     let stop = false;
@@ -4218,29 +4224,22 @@ function TimerMode({ lang, soundOn, onSaved }) {
       do { choice = arr[Math.floor(Math.random() * arr.length)]; } while (choice === lastPhraseRef.current);
       return choice;
     };
-    const say = (text) => { lastPhraseRef.current = text; speak(text, lang); haptic(HAPTIC.tap); };
-    const estSpeechMs = (text) => 350 + text.split(/\s+/).length * 230; // konuşma süresini kabaca tahmin et, kesilmesin
+    const say = (text) => {
+      lastPhraseRef.current = text;
+      if (soundOn) playComboCue();
+      haptic(HAPTIC.tap);
+      setTimeout(() => speak(text, lang), 260); // ton bitsin, sonra net konuşma başlasın
+    };
     const fire = () => {
       if (stop) return;
       const combos = COMBO_CALLS[lang] || COMBO_CALLS.tr;
-      const barks = BARK_CALLS[lang] || BARK_CALLS.tr;
-      // Round ilerledikçe (kalan süre azaldıkça) hoca daha sık ve daha kesik konuşur — gerçek yorgunluk baskısı
+      // Round ilerledikçe (kalan süre azaldıkça) tempo hafifçe hızlanır
       const totalWork = cfg.work || 1;
-      const elapsedFrac = 1 - Math.min(1, leftRef.current / totalWork); // 0 (round başı) → 1 (round sonu)
-      const barkChance = 0.28 + elapsedFrac * 0.22; // %28 → %50 arası
-      const isBark = Math.random() < barkChance;
-      const arr = isBark ? barks : combos;
-      const phrase = pick(arr);
+      const elapsedFrac = 1 - Math.min(1, leftRef.current / totalWork);
+      const phrase = pick(combos);
       say(phrase);
-      // Kombinasyondan sonra bazen (round ilerledikçe daha sık) hızlı bir yönlendirme nidası ekle —
-      // gerçek hocaların "1-2! ...Çık!" tarzı kombinasyon+direktif kalıbı
-      const chainChance = 0.25 + elapsedFrac * 0.2;
-      if (!isBark && Math.random() < chainChance) {
-        const wait = estSpeechMs(phrase) + 150 + Math.random() * 250;
-        setTimeout(() => { if (!stop) say(pick(barks)); }, wait);
-      }
-      const speedFactor = 1 - elapsedFrac * 0.35; // round sonuna doğru %35'e kadar hızlan
-      const baseDelay = isBark ? (2800 + Math.random() * 400) : (2600 + Math.random() * 1600);
+      const speedFactor = 1 - elapsedFrac * 0.35;
+      const baseDelay = 2600 + Math.random() * 1600;
       comboT.current = setTimeout(fire, Math.max(1500, baseDelay * speedFactor));
     };
     comboT.current = setTimeout(fire, 1200);
@@ -5866,12 +5865,16 @@ function AppInner() {
         {/* ── ANTRENMAN (Train): üstte segment geçişi ── */}
         {tab === "train" && (
           <div>
-            <HeroBanner img={BANNER_TRAIN} color="#f97316" />
-            <div style={{ display: "flex", gap: 6, background: CARD, borderRadius: 12, padding: 4, marginBottom: 18 }}>
-              {[{ id: "auto", icon: "⚡", label: lang === "en" ? "Auto" : "Otomatik" }, { id: "build", icon: "🥊", label: lang === "en" ? "Build" : "Kendin Kur" }, { id: "run", icon: "⏱️", label: lang === "en" ? "Timer" : "Timer" }].map(sg => (
-                <button key={sg.id} onClick={() => setTrainSub(sg.id)} style={{ flex: 1, background: trainSub === sg.id ? RED : "transparent", color: trainSub === sg.id ? "#fff" : "#888", border: "none", borderRadius: 9, padding: "10px 4px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>{sg.icon} {sg.label}</button>
-              ))}
-            </div>
+            {!autoFlowActive && (
+              <>
+                <HeroBanner img={BANNER_TRAIN} color="#f97316" />
+                <div style={{ display: "flex", gap: 6, background: CARD, borderRadius: 12, padding: 4, marginBottom: 18 }}>
+                  {[{ id: "auto", icon: "⚡", label: lang === "en" ? "Auto" : "Otomatik" }, { id: "build", icon: "🥊", label: lang === "en" ? "Build" : "Kendin Kur" }, { id: "run", icon: "⏱️", label: lang === "en" ? "Timer" : "Timer" }].map(sg => (
+                    <button key={sg.id} onClick={() => setTrainSub(sg.id)} style={{ flex: 1, background: trainSub === sg.id ? RED : "transparent", color: trainSub === sg.id ? "#fff" : "#888", border: "none", borderRadius: 9, padding: "10px 4px", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>{sg.icon} {sg.label}</button>
+                  ))}
+                </div>
+              </>
+            )}
             {trainSub === "auto" && (
               autoFlowActive || autoLevel ? (
                 <AutoProgram lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} initMin={autoInitMin} autoGenerate={quickAutoGen} onConsumedAutoGenerate={() => setQuickAutoGen(false)} initLevel={autoLevel} onChangeLevel={() => setAutoLevel(null)} />
