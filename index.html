@@ -5705,6 +5705,7 @@ function AppInner() {
   const [trainSub, setTrainSub] = useState("auto"); // Antrenman içi segment: auto/build/run
   const [autoInitMin, setAutoInitMin] = useState(null); // Ana ekrandan seçilen hızlı süre
   const [quickAutoGen, setQuickAutoGen] = useState(false); // Hızlı/Standart/Tam/Pro kartından mı geldi — profile göre anında program kur
+  const [autoFlowActive, setAutoFlowActive] = useState(false); // Hızlı akış başladı mı — quickAutoGen tetikleyicisi tüketilse bile AutoProgram ekranda kalsın
   const [autoLevel, setAutoLevel] = useState(null); // Otomatik Program akışı 1. adımda seçilen seviye (ayrı ekran)
   const [favProgram, setFavProgram] = useState(null); // favoriden başlatılan program
   const [favs, setFavs] = useState(() => loadFavorites());
@@ -5829,7 +5830,7 @@ function AppInner() {
                 const trainedToday = loadJournal().some(e => e.date === today && (e.kind === "auto" || e.durationMin > 0));
                 if (trainedToday) return null;
                 return (
-                  <button onClick={() => { setAutoInitMin(null); setQuickAutoGen(false); setAutoLevel(null); setTrainSub("auto"); setTab("train"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: `linear-gradient(135deg, ${RED}22, ${CARD})`, border: `1px solid ${RED}55`, borderRadius: 14, padding: "13px 15px", marginBottom: 16, cursor: "pointer", textAlign: "left" }}>
+                  <button onClick={() => { setAutoInitMin(null); setQuickAutoGen(false); setAutoLevel(null); setAutoFlowActive(false); setTrainSub("auto"); setTab("train"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: `linear-gradient(135deg, ${RED}22, ${CARD})`, border: `1px solid ${RED}55`, borderRadius: 14, padding: "13px 15px", marginBottom: 16, cursor: "pointer", textAlign: "left" }}>
                     <span style={{ fontSize: 24 }}>🔔</span>
                     <span style={{ flex: 1 }}>
                       <span style={{ display: "block", color: "#fff", fontSize: 14, fontWeight: 800 }}>{lang === "en" ? "Time to train today!" : "Bugün antrenman zamanı!"}</span>
@@ -5852,7 +5853,7 @@ function AppInner() {
               <div style={{ color: "#777", fontSize: 12.5, lineHeight: 1.4, marginBottom: 14 }}>{lang === "en" ? "Based on your profile and what you've done so far." : "Profiline ve şimdiye kadar yaptıklarına göre."}</div>
               <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 10, marginBottom: 26, scrollbarWidth: "none" }}>
                 {/* Büyük öneri kartı 1 */}
-                <button onClick={() => { setAutoInitMin(null); setQuickAutoGen(false); setAutoLevel(null); setTrainSub("auto"); setTab("train"); }} style={{ flexShrink: 0, width: 270, height: 188, borderRadius: 20, border: "none", cursor: "pointer", padding: 22, textAlign: "left", position: "relative", overflow: "hidden", background: `linear-gradient(150deg, ${RED}, #7f1d1d)`, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
+                <button onClick={() => { setAutoInitMin(null); setQuickAutoGen(false); setAutoLevel(null); setAutoFlowActive(false); setTrainSub("auto"); setTab("train"); }} style={{ flexShrink: 0, width: 270, height: 188, borderRadius: 20, border: "none", cursor: "pointer", padding: 22, textAlign: "left", position: "relative", overflow: "hidden", background: `linear-gradient(150deg, ${RED}, #7f1d1d)`, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
                   <img src={CARD_IMG_GLOVES} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
                   <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55)), linear-gradient(120deg, ${RED}55, transparent 60%)` }} />
                   <div style={{ color: "#fff", fontSize: 23, fontWeight: 900, lineHeight: 1.15, position: "relative", textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}>{lang === "en" ? "Find your next workout" : "Sıradaki antrenmanını bul"}</div>
@@ -5881,7 +5882,7 @@ function AppInner() {
               <div style={{ color: "#777", fontSize: 12.5, marginBottom: 14 }}>{lang === "en" ? "Tap a duration — jump straight into training, built for your level." : "Bir süreye dokun — seviyene göre hazırlanmış antrenmana direkt gir."}</div>
               <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 10, marginBottom: 26, scrollbarWidth: "none" }}>
                 {quickPresets.map(p => (
-                  <button key={p.min} onClick={() => { setAutoInitMin(p.min); setQuickAutoGen(true); setTrainSub("auto"); setTab("train"); }} style={{ flexShrink: 0, width: 130, height: 150, borderRadius: 18, border: "none", cursor: "pointer", padding: 0, textAlign: "left", position: "relative", overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.35)" }}>
+                  <button key={p.min} onClick={() => { setAutoInitMin(p.min); setQuickAutoGen(true); setAutoFlowActive(true); setTrainSub("auto"); setTab("train"); }} style={{ flexShrink: 0, width: 130, height: 150, borderRadius: 18, border: "none", cursor: "pointer", padding: 0, textAlign: "left", position: "relative", overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.35)" }}>
                     <img src={p.img} alt={p.sub} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.88) 100%)" }} />
                     <div style={{ position: "absolute", left: 16, bottom: 30, color: "#fff", fontSize: 26, fontWeight: 900, letterSpacing: -0.5, textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}>{p.min} <span style={{ fontSize: 14, fontWeight: 800 }}>{lang === "en" ? "min" : "dk"}</span></div>
@@ -5917,7 +5918,7 @@ function AppInner() {
         )}
 
         {/* ── İLERLEME (Progress) ── */}
-        {tab === "progress" && (<div><HeroBanner img={BANNER_PROG} color="#3b82f6" /><TrainingJournal lang={lang} onStartFirst={() => { setAutoLevel(null); setTrainSub("auto"); setTab("train"); }} /></div>)}
+        {tab === "progress" && (<div><HeroBanner img={BANNER_PROG} color="#3b82f6" /><TrainingJournal lang={lang} onStartFirst={() => { setAutoLevel(null); setAutoFlowActive(false); setTrainSub("auto"); setTab("train"); }} /></div>)}
 
         {/* ── TEKNİKLER (Moves) ── */}
         {tab === "techniques" && (<div><HeroBanner img={BANNER_TECH} color="#a855f7" /><MoveLibrary lang={lang} /></div>)}
@@ -5932,7 +5933,7 @@ function AppInner() {
               ))}
             </div>
             {trainSub === "auto" && (
-              quickAutoGen || autoLevel ? (
+              autoFlowActive || autoLevel ? (
                 <AutoProgram lang={lang} roundSec={roundSec} restSec={restSec} coachOn={coachOn} soundOn={soundOn} warnSec={warnSec} equipment={equipment} onWorkoutComplete={onWorkoutComplete} initMin={autoInitMin} autoGenerate={quickAutoGen} onConsumedAutoGenerate={() => setQuickAutoGen(false)} initLevel={autoLevel} onChangeLevel={() => setAutoLevel(null)} />
               ) : (
                 <AutoLevelPicker lang={lang} onPick={(lvl) => setAutoLevel(lvl)} />
