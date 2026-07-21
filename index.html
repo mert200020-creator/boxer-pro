@@ -56,6 +56,7 @@
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo, useCallback, Component } = React;
@@ -874,7 +875,15 @@ const BELTS = [
   { id: "ibf",      pts: 2500, nameTr: "IBF Kemeri",      nameEn: "IBF Belt",      icon: "👑", color: GOLD },
   { id: "undisputed", pts: 5000, nameTr: "Tartışmasız Şampiyon", nameEn: "Undisputed Champion", icon: "💎", color: RED },
 ];
-const PTS_PER_WORKOUT = 75;        // puan kazanmak artık daha zor (100 → 75)
+const PTS_PER_WORKOUT = 75;        // eski sabit değer — artık sadece "level" bilgisi olmayan (Timer modu gibi) durumlarda kaba tahmin için referans
+const PTS_PER_MIN = 4;             // dakika başına temel puan — süre uzadıkça, zorlaştıkça daha çok puan
+const LEVEL_PTS_MULT = { beginner: 0.85, intermediate: 1.0, pro: 1.25, mix: 1.15 };
+// Antrenmanın süresi ve zorluğuna göre puan hesapla — kısa/kolay antrenman az, uzun/zor antrenman çok puan verir
+function calcWorkoutPoints(durationMin, level) {
+  const mult = LEVEL_PTS_MULT[level] || 1.0;
+  const mins = Math.max(1, durationMin || 0);
+  return Math.max(20, Math.round(mins * PTS_PER_MIN * mult));
+}
 const PENALTY_PER_DAY = 100;       // her boş gün için ceza
 const STORE_KEY = "boxerpro_progress_v2";
 
@@ -1037,6 +1046,70 @@ function addJournalEntry(entry) {
   saveJournal(all);
   return full;
 }
+// ─── Haftalık Meydan Okumalar ─────────────────────────────────────────────────
+// Her hafta (Pazartesi'den Pazar'a) 3 hedef sunulur — hafta numarasına göre sabit
+// seçilir (aynı hafta boyunca değişmez, yeni haftada yeni set gelir). Tamamlanınca
+// bonus puan kazanılır (bir kere, "claim" edilince).
+function isoWeekKey(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (dt.getUTCDay() + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round(((dt - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+  return `${dt.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+const CHALLENGE_POOL = [
+  { id: "cnt", icon: "🥊", metric: "count", reward: 60,  mk: (n)=>({tr:`Bu hafta ${n} antrenman yap`, en:`Do ${n} workouts this week`}), goals: [3,4,5] },
+  { id: "min", icon: "⏱️", metric: "min",   reward: 70,  mk: (n)=>({tr:`Bu hafta toplam ${n} dakika çalış`, en:`Train ${n} total minutes this week`}), goals: [90,120,160] },
+  { id: "kcal",icon: "🔥", metric: "kcal",  reward: 70,  mk: (n)=>({tr:`Bu hafta toplam ${n} kalori yak`, en:`Burn ${n} total calories this week`}), goals: [500,800,1200] },
+  { id: "var", icon: "🎯", metric: "variety", reward: 50, mk: (n)=>({tr:`Bu hafta ${n} farklı kategori dene`, en:`Try ${n} different categories this week`}), goals: [2,3,4] },
+  { id: "long",icon: "🐉", metric: "long",  reward: 55,  mk: (n)=>({tr:`Tek seferde ${n}+ dakika çalış`, en:`Train ${n}+ min in a single session`}), goals: [30,40,50] },
+];
+// Hafta anahtarından (örn "2026-W29") basit bir sözde-rastgele sayı üretir — deterministik
+function seedFromKey(key) {
+  let h = 0; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h;
+}
+function getWeeklyChallenges(now) {
+  const key = isoWeekKey(now || new Date());
+  const seed = seedFromKey(key);
+  // Havuzdan 3 farklı meydan okuma seç (tohuma göre sabit sırayla)
+  const pool = [...CHALLENGE_POOL];
+  const picked = [];
+  let s = seed;
+  while (picked.length < 3 && pool.length) {
+    s = (s * 1103515245 + 12345) >>> 0;
+    const idx = s % pool.length;
+    picked.push(pool.splice(idx, 1)[0]);
+  }
+  return picked.map((c, i) => {
+    const gIdx = (seed >>> (i * 3)) % c.goals.length;
+    return { ...c, goal: c.goals[gIdx], weekKey: key };
+  });
+}
+// Bu haftanın günlük kayıtlarından her meydan okumanın ilerlemesini hesaplar
+function challengeProgress(entries, now) {
+  const key = isoWeekKey(now || new Date());
+  const startOfWeek = (() => { const d = new Date(now || new Date()); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); d.setHours(0,0,0,0); return d; })();
+  const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(endOfWeek.getDate() + 7);
+  const wk = entries.filter(e => { const d = new Date(e.date); return d >= startOfWeek && d < endOfWeek; });
+  const categorySet = new Set(); wk.forEach(e => (e.cats || []).forEach(c => categorySet.add(c)));
+  return {
+    weekKey: key,
+    count: wk.length,
+    min: wk.reduce((s,e)=>s+(e.durationMin||0),0),
+    kcal: wk.reduce((s,e)=>s+(e.calories||0),0),
+    variety: categorySet.size,
+    long: wk.reduce((m,e)=>Math.max(m,e.durationMin||0),0),
+  };
+}
+const CHALLENGE_CLAIMS_KEY = "boxerpro_challenge_claims_v1";
+function loadChallengeClaims() {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(window.localStorage.getItem(CHALLENGE_CLAIMS_KEY) || "{}"); } catch { return {}; }
+}
+function saveChallengeClaims(c) { try { window.localStorage.setItem(CHALLENGE_CLAIMS_KEY, JSON.stringify(c)); } catch {} }
+
 // Seri (streak): bugünden veya dünden geriye, en az bir antrenman kaydı olan ardışık gün sayısı.
 // Bugün henüz antrenman yapılmadıysa seri kopmaz (dün antrenman varsa "devam ediyor" sayılır);
 // hem bugün hem dün boşsa seri 0'a düşer.
@@ -1051,6 +1124,7 @@ function computeStreak(entries) {
   while (days.has(fmt(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
   return streak;
 }
+
 function updateJournalEntry(id, patch) {
   const all = loadJournal();
   const i = all.findIndex(e => e.id === id);
@@ -1088,6 +1162,7 @@ function journalSummary(program, lang) {
     title: program.title || (lang === "en" ? "Workout completed" : "Antrenman tamamlandı"),
     cats,
     phases,
+    level: program.level || null,
   };
 }
 
@@ -1111,7 +1186,11 @@ function personalRecords() {
     bestStreak = Math.max(bestStreak, cur);
     prev = d;
   }
-  return { totalWorkouts, totalMin, totalKcal, longestMin, bestKcal, bestStreak };
+  const totalDays = days.length;
+  const categorySet = new Set();
+  all.forEach(e => (e.cats || []).forEach(c => categorySet.add(c)));
+  const categoryVariety = categorySet.size;
+  return { totalWorkouts, totalMin, totalKcal, longestMin, bestKcal, bestStreak, totalDays, categoryVariety };
 }
 
 // Haftalık istatistik (offset: 0=bu hafta, -1=geçen hafta) — Pzt başlangıç
@@ -1132,18 +1211,42 @@ function weekStats(offset) {
 
 // ─── Başarımlar (rozetler) — personalRecords + puan verisinden hesaplanır ─────
 const ACHIEVEMENTS = [
-  { id: "first",       icon: "👣", metric: "totalWorkouts", goal: 1,     color: "#10b981", tr: "İlk Adım",          en: "First Step",        dtr: "İlk antrenmanını tamamla",          den: "Complete your first workout" },
-  { id: "w10",         icon: "🥊", metric: "totalWorkouts", goal: 10,    color: "#3b82f6", tr: "Düzenli Dövüşçü",   en: "Regular Fighter",   dtr: "10 antrenman tamamla",               den: "Complete 10 workouts" },
-  { id: "w50",         icon: "🔥", metric: "totalWorkouts", goal: 50,    color: "#f97316", tr: "Demir İrade",       en: "Iron Will",         dtr: "50 antrenman tamamla",               den: "Complete 50 workouts" },
-  { id: "w100",        icon: "💯", metric: "totalWorkouts", goal: 100,   color: GOLD,      tr: "Yüz Savaş",         en: "Hundred Battles",   dtr: "100 antrenman tamamla",              den: "Complete 100 workouts" },
-  { id: "streak3",     icon: "⚡", metric: "bestStreak",    goal: 3,     color: "#a855f7", tr: "Üç Gün Üst Üste",   en: "Three in a Row",    dtr: "3 gün arka arkaya çalış",            den: "Train 3 days in a row" },
-  { id: "streak7",     icon: "📅", metric: "bestStreak",    goal: 7,     color: "#06b6d4", tr: "Haftalık Disiplin", en: "Weekly Discipline", dtr: "7 gün arka arkaya çalış",            den: "Train 7 days in a row" },
-  { id: "streak30",    icon: "🏆", metric: "bestStreak",    goal: 30,    color: GOLD,      tr: "Ay Boyu Çelik",     en: "Steel Month",       dtr: "30 gün arka arkaya çalış",           den: "Train 30 days in a row" },
-  { id: "kcal1k",      icon: "🔥", metric: "totalKcal",     goal: 1000,  color: "#f97316", tr: "Yakıcı",            en: "Burner",            dtr: "Toplam 1.000 kalori yak",            den: "Burn 1,000 total calories" },
-  { id: "kcal10k",     icon: "🌋", metric: "totalKcal",     goal: 10000, color: RED,       tr: "Volkan",            en: "Volcano",           dtr: "Toplam 10.000 kalori yak",           den: "Burn 10,000 total calories" },
-  { id: "min600",      icon: "⏱️", metric: "totalMin",      goal: 600,   color: "#10b981", tr: "On Saat Ter",       en: "Ten Hours",         dtr: "Toplam 600 dakika çalış",            den: "Train 600 total minutes" },
-  { id: "long60",      icon: "🐉", metric: "longestMin",    goal: 60,    color: "#3b82f6", tr: "Maraton Round",     en: "Marathon Round",    dtr: "Tek seferde 60+ dakika çalış",       den: "Train 60+ min in one session" },
-  { id: "burn500",     icon: "💥", metric: "bestKcal",      goal: 500,   color: GOLD,      tr: "Tek Seansta Yangın",en: "Single Inferno",    dtr: "Tek antrenmanda 500+ kalori yak",    den: "Burn 500+ kcal in one workout" },
+  // Toplam antrenman sayısı — 7 kademe, en üst ~6-9 ay sürecek şekilde
+  { id: "first",  icon: "👣", metric: "totalWorkouts", goal: 1,   color: "#10b981", tr: "İlk Adım",        en: "First Step",      dtr: "İlk antrenmanını tamamla",  den: "Complete your first workout" },
+  { id: "w5",     icon: "🥊", metric: "totalWorkouts", goal: 5,   color: "#3b82f6", tr: "Isınıyorsun",     en: "Warming Up",      dtr: "5 antrenman tamamla",        den: "Complete 5 workouts" },
+  { id: "w15",    icon: "🥊", metric: "totalWorkouts", goal: 15,  color: "#3b82f6", tr: "Düzenli Dövüşçü", en: "Regular Fighter", dtr: "15 antrenman tamamla",       den: "Complete 15 workouts" },
+  { id: "w30",    icon: "🔥", metric: "totalWorkouts", goal: 30,  color: "#f97316", tr: "Kararlı",         en: "Committed",       dtr: "30 antrenman tamamla",       den: "Complete 30 workouts" },
+  { id: "w60",    icon: "🔥", metric: "totalWorkouts", goal: 60,  color: "#f97316", tr: "Demir İrade",     en: "Iron Will",       dtr: "60 antrenman tamamla",       den: "Complete 60 workouts" },
+  { id: "w100",   icon: "💯", metric: "totalWorkouts", goal: 100, color: GOLD,      tr: "Yüz Savaş",       en: "Hundred Battles", dtr: "100 antrenman tamamla",      den: "Complete 100 workouts" },
+  { id: "w150",   icon: "👑", metric: "totalWorkouts", goal: 150, color: RED,       tr: "Yaşam Tarzı",     en: "Lifestyle",       dtr: "150 antrenman tamamla",      den: "Complete 150 workouts" },
+  // Ardışık gün serisi — 5 kademe
+  { id: "streak3",  icon: "⚡", metric: "bestStreak", goal: 3,  color: "#a855f7", tr: "Üç Gün Üst Üste",   en: "Three in a Row",    dtr: "3 gün arka arkaya çalış",  den: "Train 3 days in a row" },
+  { id: "streak7",  icon: "📅", metric: "bestStreak", goal: 7,  color: "#06b6d4", tr: "Haftalık Disiplin", en: "Weekly Discipline", dtr: "7 gün arka arkaya çalış",  den: "Train 7 days in a row" },
+  { id: "streak14", icon: "📆", metric: "bestStreak", goal: 14, color: "#06b6d4", tr: "İki Hafta Kesintisiz", en: "Two Unbroken Weeks", dtr: "14 gün arka arkaya çalış", den: "Train 14 days in a row" },
+  { id: "streak21", icon: "🗓️", metric: "bestStreak", goal: 21, color: GOLD,      tr: "Alışkanlık Oldu",   en: "It's a Habit",      dtr: "21 gün arka arkaya çalış", den: "Train 21 days in a row" },
+  { id: "streak45", icon: "🏆", metric: "bestStreak", goal: 45, color: RED,       tr: "Çelik Disiplin",    en: "Steel Discipline",  dtr: "45 gün arka arkaya çalış", den: "Train 45 days in a row" },
+  // Toplam yakılan kalori — 5 kademe
+  { id: "kcal1k",  icon: "🔥", metric: "totalKcal", goal: 1000,  color: "#f97316", tr: "Yakıcı",         en: "Burner",       dtr: "Toplam 1.000 kalori yak",  den: "Burn 1,000 total calories" },
+  { id: "kcal5k",  icon: "🔥", metric: "totalKcal", goal: 5000,  color: "#f97316", tr: "Ateşli",         en: "On Fire",      dtr: "Toplam 5.000 kalori yak",  den: "Burn 5,000 total calories" },
+  { id: "kcal15k", icon: "🌋", metric: "totalKcal", goal: 15000, color: RED,       tr: "Volkan",         en: "Volcano",      dtr: "Toplam 15.000 kalori yak", den: "Burn 15,000 total calories" },
+  { id: "kcal30k", icon: "☄️", metric: "totalKcal", goal: 30000, color: GOLD,      tr: "Yıkıcı Güç",     en: "Devastation",  dtr: "Toplam 30.000 kalori yak", den: "Burn 30,000 total calories" },
+  { id: "kcal60k", icon: "💥", metric: "totalKcal", goal: 60000, color: RED,       tr: "Efsanevi Yanış", en: "Legendary Burn", dtr: "Toplam 60.000 kalori yak", den: "Burn 60,000 total calories" },
+  // Toplam antrenman süresi — 5 kademe
+  { id: "min150",  icon: "⏱️", metric: "totalMin", goal: 150,  color: "#10b981", tr: "İlk Saatler",     en: "First Hours",   dtr: "Toplam 150 dakika çalış",   den: "Train 150 total minutes" },
+  { id: "min600",  icon: "⏱️", metric: "totalMin", goal: 600,  color: "#10b981", tr: "On Saat Ter",     en: "Ten Hours",     dtr: "Toplam 600 dakika çalış",   den: "Train 600 total minutes" },
+  { id: "min1500", icon: "⏳", metric: "totalMin", goal: 1500, color: "#3b82f6", tr: "Yirmi Beş Saat",  en: "25 Hours In",   dtr: "Toplam 1.500 dakika çalış", den: "Train 1,500 total minutes" },
+  { id: "min3000", icon: "⏳", metric: "totalMin", goal: 3000, color: GOLD,      tr: "Elli Saat",       en: "50 Hours In",   dtr: "Toplam 3.000 dakika çalış", den: "Train 3,000 total minutes" },
+  { id: "min6000", icon: "🕰️", metric: "totalMin", goal: 6000, color: RED,       tr: "Yüz Saat Ustası", en: "100-Hour Master", dtr: "Toplam 6.000 dakika çalış", den: "Train 6,000 total minutes" },
+  // Tek seferlik rekorlar
+  { id: "long45",  icon: "🐉", metric: "longestMin", goal: 45, color: "#3b82f6", tr: "Uzun Soluklu",   en: "Long Haul",      dtr: "Tek seferde 45+ dakika çalış", den: "Train 45+ min in one session" },
+  { id: "long75",  icon: "🐲", metric: "longestMin", goal: 75, color: GOLD,      tr: "Maraton Round",  en: "Marathon Round", dtr: "Tek seferde 75+ dakika çalış", den: "Train 75+ min in one session" },
+  { id: "burn350", icon: "💥", metric: "bestKcal", goal: 350, color: "#f97316", tr: "Tek Seansta Alev",  en: "Single Flame",   dtr: "Tek antrenmanda 350+ kalori yak", den: "Burn 350+ kcal in one workout" },
+  { id: "burn600", icon: "💥", metric: "bestKcal", goal: 600, color: GOLD,      tr: "Tek Seansta Yangın", en: "Single Inferno", dtr: "Tek antrenmanda 600+ kalori yak", den: "Burn 600+ kcal in one workout" },
+  // Çeşitlilik & koşu
+  { id: "variety4", icon: "🎯", metric: "categoryVariety", goal: 4, color: "#a855f7", tr: "Çok Yönlü",     en: "Well-Rounded", dtr: "En az 4 farklı kategori dene",  den: "Try at least 4 different categories" },
+  { id: "variety7", icon: "🌟", metric: "categoryVariety", goal: 7, color: GOLD,      tr: "Tam Boksör",    en: "Complete Boxer", dtr: "En az 7 farklı kategori dene", den: "Try at least 7 different categories" },
+  { id: "days15", icon: "🗓️", metric: "totalDays", goal: 15, color: "#10b981", tr: "On Beş Gün",   en: "Fifteen Days",  dtr: "Toplam 15 farklı günde antrenman yap", den: "Train on 15 different days total" },
+  { id: "days50", icon: "🗓️", metric: "totalDays", goal: 50, color: "#3b82f6", tr: "Elli Gün",     en: "Fifty Days",    dtr: "Toplam 50 farklı günde antrenman yap", den: "Train on 50 different days total" },
 ];
 function computeAchievements() {
   const r = personalRecords();
@@ -1245,6 +1348,30 @@ function saveReminder(r) { try { window.localStorage.setItem(REMINDER_KEY, JSON.
 async function requestNotifPermission() {
   if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
   try { return await Notification.requestPermission(); } catch { return "denied"; }
+}
+// NOT: Web'de gerçek arka plan bildirimi (telefon kilitliyken/uygulama kapalıyken) sunucu
+// gerektirir — bu statik sitede yok. Bunun yerine: uygulama her açıldığında/öne geldiğinde
+// saat geçmiş mi diye kontrol edip mümkünse (izin varsa) bir bildirim gösteriyoruz. Ana
+// Ekran'daki kart (aşağıda) her koşulda çalışan garanti bir hatırlatma.
+const REMINDER_FIRED_KEY = "boxerpro_reminder_fired_date";
+function maybeFireReminderNotification(lang) {
+  try {
+    const rem = loadReminder();
+    if (!rem.enabled || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const [h, m] = (rem.time || "18:00").split(":").map(Number);
+    const now = new Date();
+    const pastTime = now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m);
+    if (!pastTime) return;
+    const today = todayStr();
+    if (window.localStorage.getItem(REMINDER_FIRED_KEY) === today) return; // bugün zaten gösterildi
+    const trainedToday = loadJournal().some(e => e.date === today && (e.kind === "auto" || e.durationMin > 0));
+    if (trainedToday) return;
+    new Notification(lang === "en" ? "BOXER PRO — Time to train 🥊" : "BOXER PRO — Antrenman zamanı 🥊", {
+      body: lang === "en" ? "You haven't trained today yet. Even 15 minutes counts." : "Bugün henüz antrenman yapmadın. 15 dakika bile sayar.",
+      icon: "icon-192.png?v=3",
+    });
+    window.localStorage.setItem(REMINDER_FIRED_KEY, today);
+  } catch {}
 }
 // ─── Premium / Destek Durumu ──────────────────────────────────────────────────
 // İskelet: gerçek uygulamada App Store In-App Purchase ile değişir. Şimdilik local flag.
@@ -2689,12 +2816,16 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
         <span style={{ background: `${col}22`, color: col, fontSize: 11, fontWeight: 800, letterSpacing: 2, padding: "5px 14px", borderRadius: 8 }}>{step?.kind === "rest" ? t.phaseRest : `${t.now} · ${step?.phaseName}`}</span>
       </div>
 
-      <div style={{ flex: "0 0 auto", height: 168, padding: "10px 24px 6px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", overflow: "hidden" }}>
+      {(() => {
+        const hasLottie = step?.kind !== "rest" && !!findLottieForMove(step);
+        return (
+      <div style={{ flex: "0 0 auto", height: hasLottie ? 240 : 168, padding: "10px 24px 6px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", overflow: "hidden" }}>
         {step?.kind === "rest" ? (
           <><div style={{ fontSize: 40, marginBottom: 8 }}>😮‍💨</div><div style={{ color: "#3b82f6", fontSize: 28, fontWeight: 900, marginBottom: 10 }}>{t.rest}</div><div style={{ color: "#8ab4f8", fontSize: 13.5, fontWeight: 600, fontStyle: "italic", marginBottom: 8, maxWidth: 320 }}>"{REST_QUOTES[lang][idx % REST_QUOTES[lang].length]}"</div>{step?.desc && <div onClick={() => setShowInfo(true)} style={{ color: "#999", fontSize: 14, lineHeight: 1.45, maxWidth: 340, width: "100%", cursor: "pointer", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{step.desc}</div>}</>
         ) : (
           <>
             {step?.setLabel && <div style={{ color: col, fontSize: 14, fontWeight: 800, marginBottom: 6, flexShrink: 0 }}>{step.setLabel}</div>}
+            {(() => { const lf = findLottieForMove(step); return lf ? <LottiePlayer src={lf} size={76} /> : null; })()}
             <div style={{ color: "#fff", fontSize: 25, fontWeight: 900, lineHeight: 1.18, marginBottom: 8, flexShrink: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: 360 }}>{step?.name}</div>
             {step?.desc && (
               <div onClick={() => setShowInfo(true)} style={{ cursor: "pointer", maxWidth: 340, width: "100%", flexShrink: 0 }}>
@@ -2706,6 +2837,7 @@ function WorkoutPlayer({ program, accentColor, lang, roundSec, restSec, coachOn:
           </>
         )}
       </div>
+        ); })()}
 
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
         {step?.timed ? (
@@ -2889,6 +3021,7 @@ function FinishScreen({ program, stats, lang, onRestart, onExit }) {
   const [q] = useState(() => LEGEND_QUOTES[Math.floor(Math.random() * LEGEND_QUOTES.length)]);
   const [shareMsg, setShareMsg] = useState("");
   const s = stats || { totalTime: 0, rounds: 0, intensityScore: 0 };
+  const earnedPts = calcWorkoutPoints(Math.round(s.totalTime / 60), program && program.level);
   const cell = { flex: 1, textAlign: "center" };
   const num = { fontSize: 26, fontWeight: 900, lineHeight: 1 };
   const lbl = { fontSize: 10, color: "#666", letterSpacing: 1.5, fontWeight: 700, marginTop: 4, textTransform: "uppercase" };
@@ -2931,7 +3064,7 @@ function FinishScreen({ program, stats, lang, onRestart, onExit }) {
       </div>
 
       <div style={{ background: `${GOLD}18`, border: `1px solid ${GOLD}55`, borderRadius: 12, padding: "7px 18px", marginBottom: 22, position: "relative", zIndex: 2 }}>
-        <span style={{ color: GOLD, fontSize: 14, fontWeight: 800 }}>+{PTS_PER_WORKOUT} {t.points} {t.earned}</span>
+        <span style={{ color: GOLD, fontSize: 14, fontWeight: 800 }}>+{earnedPts} {t.points} {t.earned}</span>
       </div>
       <div style={{ padding: "0 20px", textAlign: "center", marginBottom: 28, position: "relative", zIndex: 2 }}>
         <div style={{ color: "#eee", fontSize: 16, fontWeight: 700, lineHeight: 1.45, marginBottom: 12, fontStyle: "italic" }}>"{lang === "en" ? q.en : q.tr}"</div>
@@ -3051,11 +3184,12 @@ function ProfileScreen({ lang, initial, onSave, onSkip, isEdit }) {
 }
 
 // ─── İlk Açılış Turu ──────────────────────────────────────────────────────────
-function TourScreen({ lang, onDone }) {
+function TourScreen({ lang, onDone, onStartFirstWorkout, userName }) {
   const t = T[lang];
   const [step, setStep] = useState(0);
+  const welcomeTitle = userName ? (lang === "en" ? `Welcome, ${userName}` : `Hoş Geldin, ${userName}`) : t.tour1Title;
   const slides = [
-    { icon: "🥊", title: t.tour1Title, body: t.tour1Body, color: RED },
+    { icon: "🥊", title: welcomeTitle, body: t.tour1Body, color: RED },
     { icon: "⚡", title: t.tour2Title, body: t.tour2Body, color: "#f97316" },
     { icon: "📚", title: t.tour3Title, body: t.tour3Body, color: "#a855f7" },
     { icon: "📊", title: t.tour4Title, body: t.tour4Body, color: "#3b82f6" },
@@ -3090,10 +3224,15 @@ function TourScreen({ lang, onDone }) {
             <button key={i} onClick={() => setStep(i)} aria-label={`${i + 1}`} style={{ width: i === step ? 26 : 8, height: 8, borderRadius: 4, border: "none", padding: 0, cursor: "pointer", background: i === step ? s.color : "#333", transition: "all 0.3s" }} />
           ))}
         </div>
-        <button onClick={() => last ? onDone() : setStep(step + 1)}
+        <button onClick={() => last ? (onStartFirstWorkout ? onStartFirstWorkout() : onDone()) : setStep(step + 1)}
           style={{ width: "100%", padding: "17px", borderRadius: 16, border: "none", background: last ? `linear-gradient(135deg, ${RED}, #ff6b6b)` : s.color, color: lightText ? "#fff" : "#000", fontSize: 16, fontWeight: 900, cursor: "pointer", letterSpacing: 0.5, boxShadow: `0 6px 24px ${s.color}55` }}>
-          {last ? t.tourStart : t.tourNext}
+          {last ? (lang === "en" ? "🥊 Start My First Workout" : "🥊 İlk Antrenmanıma Başla") : t.tourNext}
         </button>
+        {last && (
+          <button onClick={onDone} style={{ width: "100%", marginTop: 10, padding: "12px", borderRadius: 12, border: "none", background: "transparent", color: "#666", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            {lang === "en" ? "Just take me to the app" : "Sadece ana ekrana geç"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -3451,6 +3590,7 @@ function buildAutoProgram(totalMin, level, equipment, lang, daySeed, goal, focus
     subtitle: `${finalMin} ${lang === "en" ? "min" : "dk"} · ${themeLabel}`,
     totalTime: `${finalMin} dk`,
     phases: allPhases,
+    level,
   };
 }
 
@@ -3619,7 +3759,7 @@ const MONTH_NAMES = {
   tr: ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"],
   en: ["January","February","March","April","May","June","July","August","September","October","November","December"],
 };
-function TrainingJournal({ lang, onStartFirst }) {
+function TrainingJournal({ lang, onStartFirst, onClaimBonus }) {
   const t = T[lang];
   const [entries, setEntries] = useState(() => loadJournal());
   const [adding, setAdding] = useState(false);
@@ -3646,6 +3786,41 @@ function TrainingJournal({ lang, onStartFirst }) {
   const totalKm = entries.reduce((s, e) => s + (e.distanceKm || 0), 0);
   const thisMonthCount = entries.filter(e => { const d = new Date(e.date); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).length;
   const streak = useMemo(() => computeStreak(entries), [entries]);
+  const [claims, setClaims] = useState(() => loadChallengeClaims());
+  const challenges = useMemo(() => getWeeklyChallenges(now), []);
+  const chProgress = useMemo(() => challengeProgress(entries, now), [entries]);
+  const claimedThisWeek = claims[chProgress.weekKey] || [];
+  const handleClaim = (ch) => {
+    const next = { ...claims, [ch.weekKey]: [...claimedThisWeek, ch.id] };
+    setClaims(next); saveChallengeClaims(next);
+    onClaimBonus && onClaimBonus(ch.reward);
+  };
+
+  // Son 7 gün — günlük antrenman sayısı ve puanı (basit çubuk grafik için)
+  const last7 = useMemo(() => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      const dayEntries = entries.filter(e => e.date === ds);
+      days.push({ date: ds, dow: d.getDay(), count: dayEntries.length, pts: dayEntries.reduce((s,e)=>s+(e.points||0),0), min: dayEntries.reduce((s,e)=>s+(e.durationMin||0),0) });
+    }
+    return days;
+  }, [entries]);
+  // Bu hafta / geçen hafta karşılaştırması (Pazartesi başlangıçlı)
+  const weekStats = useMemo(() => {
+    const startOfWeek = (offset) => { const d = new Date(now); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow - offset*7); d.setHours(0,0,0,0); return d; };
+    const inRange = (dateStr, start) => { const d = new Date(dateStr); const end = new Date(start); end.setDate(end.getDate()+7); return d >= start && d < end; };
+    const thisStart = startOfWeek(0), lastStart = startOfWeek(1);
+    const thisWk = entries.filter(e => inRange(e.date, thisStart));
+    const lastWk = entries.filter(e => inRange(e.date, lastStart));
+    const sum = (arr, k) => arr.reduce((s,e)=>s+(e[k]||0),0);
+    return {
+      thisCount: thisWk.length, lastCount: lastWk.length,
+      thisMin: sum(thisWk,"durationMin"), lastMin: sum(lastWk,"durationMin"),
+      thisKcal: sum(thisWk,"calories"), lastKcal: sum(lastWk,"calories"),
+    };
+  }, [entries]);
 
   const byMonth = {};
   yearEntries.forEach(e => { const d = new Date(e.date); const k = d.getMonth(); (byMonth[k] = byMonth[k] || []).push(e); });
@@ -3795,6 +3970,92 @@ function TrainingJournal({ lang, onStartFirst }) {
         ) : (
           <span style={{ color: "#999", fontSize: 12.5, fontWeight: 600 }}>{t.streakStart}</span>
         )}
+      </div>
+
+      {/* Haftalık çubuk grafik — son 7 gün */}
+      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+        <div style={{ color: "#999", fontSize: 10, letterSpacing: 2, fontWeight: 800, marginBottom: 12 }}>{lang === "en" ? "LAST 7 DAYS" : "SON 7 GÜN"}</div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", height: 72, gap: 6 }}>
+          {(() => {
+            const maxMin = Math.max(1, ...last7.map(d => d.min));
+            const dowLabels = lang === "en" ? ["S","M","T","W","T","F","S"] : ["P","P","S","Ç","P","C","C"];
+            return last7.map((d, i) => {
+              const h = Math.round((d.min / maxMin) * 52);
+              const isToday = i === 6;
+              return (
+                <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: "100%", maxWidth: 26, height: 52, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                    <div style={{ width: "100%", height: Math.max(4, h), borderRadius: 5, background: d.count > 0 ? (isToday ? `linear-gradient(180deg, ${GOLD}, ${RED})` : `linear-gradient(180deg, ${RED}dd, ${RED}88)`) : "#ffffff10", transition: "height 0.4s ease" }} />
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: isToday ? 900 : 700, color: isToday ? GOLD : "#666" }}>{dowLabels[d.dow]}</span>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      </div>
+
+      {/* Bu hafta / geçen hafta karşılaştırması */}
+      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+        <div style={{ color: "#999", fontSize: 10, letterSpacing: 2, fontWeight: 800, marginBottom: 12 }}>{lang === "en" ? "THIS WEEK VS LAST" : "BU HAFTA / GEÇEN HAFTA"}</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          {[
+            { label: lang === "en" ? "Workouts" : "Antrenman", cur: weekStats.thisCount, prev: weekStats.lastCount, unit: "" },
+            { label: lang === "en" ? "Minutes" : "Dakika", cur: weekStats.thisMin, prev: weekStats.lastMin, unit: "" },
+            { label: lang === "en" ? "Calories" : "Kalori", cur: weekStats.thisKcal, prev: weekStats.lastKcal, unit: "" },
+          ].map((s, i) => {
+            const diff = s.cur - s.prev;
+            const up = diff > 0, down = diff < 0;
+            return (
+              <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ color: "#fff", fontSize: 20, fontWeight: 900 }}>{s.cur}</div>
+                <div style={{ color: "#666", fontSize: 10, fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</div>
+                {diff !== 0 && (
+                  <div style={{ color: up ? "#10b981" : "#ef4444", fontSize: 10.5, fontWeight: 800 }}>
+                    {up ? "▲" : "▼"} {Math.abs(diff)} {lang === "en" ? "vs last wk" : "geçen haftaya göre"}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Haftalık Meydan Okumalar */}
+      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+        <div style={{ color: "#999", fontSize: 10, letterSpacing: 2, fontWeight: 800, marginBottom: 12 }}>🏁 {lang === "en" ? "THIS WEEK'S CHALLENGES" : "BU HAFTANIN MEYDAN OKUMALARI"}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {challenges.map(ch => {
+            const cur = chProgress[ch.metric] || 0;
+            const pct = Math.min(100, Math.round((cur / ch.goal) * 100));
+            const done = cur >= ch.goal;
+            const claimed = claimedThisWeek.includes(ch.id);
+            const desc = ch.mk(ch.goal)[lang === "en" ? "en" : "tr"];
+            return (
+              <div key={ch.id} style={{ background: claimed ? `${GOLD}0d` : "#ffffff06", border: `1px solid ${claimed ? GOLD+"44" : LINE}`, borderRadius: 12, padding: "11px 13px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: 20 }}>{ch.icon}</span>
+                  <span style={{ flex: 1, color: "#ddd", fontSize: 12.5, fontWeight: 700, lineHeight: 1.3 }}>{desc}</span>
+                  <span style={{ color: GOLD, fontSize: 11, fontWeight: 900, flexShrink: 0 }}>+{ch.reward}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, height: 7, borderRadius: 4, background: "#ffffff10", overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: done ? "#10b981" : `linear-gradient(90deg, ${RED}, ${GOLD})`, transition: "width 0.4s ease" }} />
+                  </div>
+                  <span style={{ color: "#888", fontSize: 10.5, fontWeight: 700, flexShrink: 0, minWidth: 40, textAlign: "right" }}>{Math.min(cur, ch.goal)}/{ch.goal}</span>
+                </div>
+                {done && !claimed && (
+                  <button onClick={() => handleClaim(ch)} style={{ width: "100%", marginTop: 9, background: GOLD, border: "none", borderRadius: 9, padding: "8px", color: "#000", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>
+                    🎁 {lang === "en" ? `Claim +${ch.reward} points` : `+${ch.reward} puanı topla`}
+                  </button>
+                )}
+                {claimed && (
+                  <div style={{ marginTop: 8, color: "#10b981", fontSize: 11, fontWeight: 800, textAlign: "center" }}>✓ {lang === "en" ? "Claimed" : "Toplandı"}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Günün önerisi + motivasyon */}
@@ -4244,8 +4505,8 @@ function TimerMode({ lang, soundOn, onSaved }) {
 
   const logWorkout = () => {
     const totalMin = Math.max(1, Math.round((cfg.rounds * cfg.work) / 60));
-    try { addJournalEntry({ kind: "auto", title: lang === "en" ? "⏱️ Timer session" : "⏱️ Timer antrenmanı", points: PTS_PER_WORKOUT, calories: Math.round(totalMin * 8), durationMin: totalMin }); } catch {}
-    onSaved && onSaved();
+    try { addJournalEntry({ kind: "auto", title: lang === "en" ? "⏱️ Timer session" : "⏱️ Timer antrenmanı", points: calcWorkoutPoints(totalMin, null), calories: Math.round(totalMin * 8), durationMin: totalMin }); } catch {}
+    onSaved && onSaved({ points: calcWorkoutPoints(totalMin, null) });
   };
 
   // İlerleyiş: her saniye
@@ -4481,7 +4742,7 @@ function TimerMode({ lang, soundOn, onSaved }) {
           <div style={{ fontSize: 60, marginBottom: 12 }}>🏆</div>
           <div style={{ color: "#fff", fontSize: 26, fontWeight: 900, marginBottom: 8 }}>{lang==="en"?"Session complete!":"Antrenman bitti!"}</div>
           <div style={{ color: "#aaa", fontSize: 14, marginBottom: 4 }}>{cfg.rounds} round · {fmtMS(cfg.work)} {lang==="en"?"each":"her biri"}</div>
-          <div style={{ color: GOLD, fontSize: 14, fontWeight: 800, marginBottom: 28 }}>+{PTS_PER_WORKOUT} {lang==="en"?"points":"puan"}</div>
+          <div style={{ color: GOLD, fontSize: 14, fontWeight: 800, marginBottom: 28 }}>+{calcWorkoutPoints(Math.max(1, Math.round((cfg.rounds * cfg.work) / 60)), null)} {lang==="en"?"points":"puan"}</div>
           <div style={{ display: "flex", gap: 12 }}>
             <button onClick={() => { setPhase("prep"); setActive(false); }} style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, color: "#ccc", borderRadius: 14, padding: "15px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>{lang==="en"?"Close":"Kapat"}</button>
             <button onClick={start} style={{ flex: 1, background: RED, border: "none", color: "#fff", borderRadius: 14, padding: "15px", fontSize: 15, fontWeight: 900, cursor: "pointer" }}>↺ {lang==="en"?"Again":"Tekrar"}</button>
@@ -4575,7 +4836,7 @@ function RunningMode({ lang, onSaved }) {
     addJournalEntry({
       kind: "auto",
       title: `${lang === "en" ? "Run" : "Koşu"} · ${kmNum} km`,
-      points: PTS_PER_WORKOUT,
+      points: calcWorkoutPoints(minutes, null),
       cats: [lang === "en" ? "Running" : "Koşu"],
       calories: cals,
       distanceKm: kmNum,
@@ -4583,7 +4844,7 @@ function RunningMode({ lang, onSaved }) {
       note: `${kmNum} km · ${Math.floor(minutes)} dk · ${paceStr} ${t.runMinPerKm} · ${cals} kcal`,
     });
     setSaved(true);
-    if (onSaved) onSaved({ calories: cals });
+    if (onSaved) onSaved({ calories: cals, points: calcWorkoutPoints(minutes, null) });
   };
 
   const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
@@ -5055,6 +5316,7 @@ function ProgramPicker({ lang, roundSec, restSec, coachOn, soundOn, warnSec, equ
       subtitle: cats.map(c=>catLabel(c,lang)).join(" + "),
       totalTime: `${totalMin} dk`,
       phases: [warm, ...mainPhases, cool],
+      level,
     };
   };
 
@@ -5565,6 +5827,38 @@ function SettingsPanel({ lang, roundSec, setRoundSec, restSec, setRestSec, coach
 
 // ─── Ana Uygulama ─────────────────────────────────────────────────────────────
 // Sekme üstü atmosferik foto bandı
+// ─── Lottie Animasyon Oynatıcı ───────────────────────────────────────────────
+// lottie-web CDN'den gelen global `lottie` nesnesini kullanır (index.html'de yüklü).
+// Hareket ismine göre eşleşen animasyon varsa hareket ekranında oynatılır.
+const LOTTIE_ANIMATIONS = [
+  // Yeni animasyon eklendikçe buraya bir satır daha eklenir: { file: "...", match: /regex/i }
+  { file: "lottie-burpee.json", match: /burpee|jump squat|patlayıcı squat|squat sıçrama/i },
+];
+function findLottieForMove(move) {
+  if (!move) return null;
+  const hay = `${move.name || ""} ${move.nameEn || ""}`;
+  const found = LOTTIE_ANIMATIONS.find(a => a.match.test(hay));
+  return found ? found.file : null;
+}
+function LottiePlayer({ src, size = 120 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current || typeof window === "undefined" || !window.lottie) return;
+    let anim;
+    try {
+      anim = window.lottie.loadAnimation({
+        container: ref.current,
+        renderer: "svg",
+        loop: true,
+        autoplay: true,
+        path: src,
+      });
+    } catch {}
+    return () => { try { anim && anim.destroy(); } catch {} };
+  }, [src]);
+  return <div ref={ref} style={{ width: size, height: size, margin: "0 auto" }} />;
+}
+
 function HeroBanner({ img, color }) {
   return (
     <div style={{ position: "relative", width: "100%", height: 104, borderRadius: 16, overflow: "hidden", marginBottom: 18, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
@@ -5668,9 +5962,10 @@ function AppInner() {
     if (prof) setProfile(prof);
   }, []);
   const onWorkoutComplete = (info) => {
+    const earnedPts = calcWorkoutPoints((info && info.durationMin) || 0, info && info.level);
     setProgress(prev => {
       const before = prev.points;
-      const after = before + PTS_PER_WORKOUT;
+      const after = before + earnedPts;
       const np = { points: after, workouts: prev.workouts + 1, lastWorkoutDate: todayStr() };
       saveProgress(np);
       // Bu antrenmanla yeni bir kemer eşiği aşıldı mı?
@@ -5682,13 +5977,25 @@ function AppInner() {
     addJournalEntry({
       kind: "auto",
       title: (info && info.title) || (lang === "en" ? "Workout completed" : "Antrenman tamamlandı"),
-      points: PTS_PER_WORKOUT,
+      points: earnedPts,
       cats: (info && info.cats) || [],
       calories: (info && info.calories) || 0,
       durationMin: (info && info.durationMin) || 0,
       phases: (info && info.phases) || null,
     });
     setPenaltyNotice(null); // antrenman yapınca ceza uyarısını kaldır
+  };
+  // Haftalık meydan okuma tamamlanınca bonus puan ekle (günlüğe kayıt yok, sadece puan/kemer)
+  const claimBonusPoints = (pts) => {
+    setProgress(prev => {
+      const before = prev.points;
+      const after = before + pts;
+      const np = { ...prev, points: after };
+      saveProgress(np);
+      const newlyUnlocked = BELTS.find(b => b.pts > 0 && before < b.pts && after >= b.pts);
+      if (newlyUnlocked) setBeltUnlock(newlyUnlocked);
+      return np;
+    });
   };
 
   const toggleEquip = (id) => setEquipment(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
@@ -5712,13 +6019,21 @@ function AppInner() {
   useEffect(() => { if (tab === "home" && !favProgram) setFavs(loadFavorites()); }, [tab, favProgram]);
   // Sekme veya antrenman alt-ekranı değişince sayfayı en üste sarla — kullanıcı her zaman ekranın başından görsün
   useEffect(() => { window.scrollTo(0, 0); }, [tab, trainSub, autoLevel]);
+  // Hatırlatıcı: uygulama açıldığında ve öne geldiğinde (arka plandan dönünce) kontrol et
+  useEffect(() => {
+    maybeFireReminderNotification(lang);
+    const onVisible = () => { if (document.visibilityState === "visible") maybeFireReminderNotification(lang); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [lang]);
 
   const saveProfileAndClose = (p) => { saveProfile(p); setProfile(p); setShowProfile(false); if (!tourSeen()) setShowTour(true); };
   // Koşu kaydedildiğinde: puan/kemer ekle (günlüğe RunningMode zaten yazdı)
-  const onRunSaved = () => {
+  const onRunSaved = (info) => {
+    const earnedPts = (info && info.points) || PTS_PER_WORKOUT;
     setProgress(prev => {
       const before = prev.points;
-      const after = before + PTS_PER_WORKOUT;
+      const after = before + earnedPts;
       const np = { points: after, workouts: prev.workouts + 1, lastWorkoutDate: todayStr() };
       saveProgress(np);
       const newlyUnlocked = BELTS.find(b => b.pts > 0 && before < b.pts && after >= b.pts);
@@ -5731,7 +6046,10 @@ function AppInner() {
   if (showSplash) return <SplashScreen onStart={() => { setShowSplash(false); if (!loadProfile()) setShowProfile(true); }} lang={lang} setLang={setLang} />;
   // Onboarding: profil hiç oluşturulmamışsa veya kullanıcı düzenlemek istediyse
   if (showProfile) return <ProfileScreen lang={lang} initial={profile} isEdit={!!profile} onSave={saveProfileAndClose} onSkip={() => { saveProfile({ completed: true, skipped: true }); setProfile({ completed: true, skipped: true }); setShowProfile(false); if (!tourSeen()) setShowTour(true); }} />;
-  if (showTour) return <TourScreen lang={lang} onDone={() => { markTourSeen(); setShowTour(false); }} />;
+  if (showTour) return <TourScreen lang={lang} userName={profile && profile.name} onDone={() => { markTourSeen(); setShowTour(false); }} onStartFirstWorkout={() => {
+    markTourSeen(); setShowTour(false);
+    setAutoInitMin(20); setQuickAutoGen(true); setAutoFlowActive(true); setTrainSub("auto"); setTab("train");
+  }} />;
 
   return (
     <div style={{ background: BG, minHeight: "100vh", fontFamily: "'Inter',-apple-system,sans-serif", color: "#fff", maxWidth: 430, margin: "0 auto" }}>
@@ -5917,7 +6235,7 @@ function AppInner() {
         )}
 
         {/* ── İLERLEME (Progress) ── */}
-        {tab === "progress" && (<div><HeroBanner img={BANNER_PROG} color="#3b82f6" /><TrainingJournal lang={lang} onStartFirst={() => { setAutoLevel(null); setAutoFlowActive(false); setTrainSub("auto"); setTab("train"); }} /></div>)}
+        {tab === "progress" && (<div><HeroBanner img={BANNER_PROG} color="#3b82f6" /><TrainingJournal lang={lang} onStartFirst={() => { setAutoLevel(null); setAutoFlowActive(false); setTrainSub("auto"); setTab("train"); }} onClaimBonus={claimBonusPoints} /></div>)}
 
         {/* ── TEKNİKLER (Moves) ── */}
         {tab === "techniques" && (<div><HeroBanner img={BANNER_TECH} color="#a855f7" /><MoveLibrary lang={lang} /></div>)}
